@@ -13,14 +13,15 @@ from .. import db
 async def callback_query(c: Client, message: types.UpdateNewCallbackQuery):
     data = message.payload.data.decode()
     user_id = message.sender_user_id
-    # Help menu
+    
+    # Kömək menyusu
     if data.startswith("help_"):
         await handle_help_callback(c, message)
         return
 
-    # Back to main menu
+    # Əsas menyuya qayıdış
     if data == "back_menu":
-        await message.answer("⏳ Returning to main menu…")
+        await message.answer("⏳ ᴍᴇɴʏᴜʏᴀ ǫᴀʏıᴅıʟıʀ...")
         bot_username = c.me.usernames.editable_username
         bot_name = c.me.first_name
         await message.edit_message_text(
@@ -30,9 +31,9 @@ async def callback_query(c: Client, message: types.UpdateNewCallbackQuery):
         )
         return
 
-    # Only handle spot_ callbacks
+    # Səhv callback datası
     if not data.startswith("spot_"):
-        await message.answer("Unexpected callback data", show_alert=True)
+        await message.answer("⚠️ ɢöᴢʟəɴɪʟᴍəʏəɴ xəᴛᴀ", show_alert=True)
         await c.deleteMessages(message.chat_id, [message.message_id])
         return
 
@@ -43,12 +44,12 @@ async def callback_query(c: Client, message: types.UpdateNewCallbackQuery):
 
     id_enc, uid = data[split1 + 1: split2], data[split2 + 1:]
     if uid not in ("0", str(user_id)):
-        await message.answer("🚫 This button wasn't meant for you.", show_alert=True)
+        await message.answer("🚫 ʙᴜ düʏᴍə sɪᴢɪɴ üçüɴ ᴅᴇʏɪʟ.", show_alert=True)
         return
 
     url = shortener.decode_url(id_enc)
     if not url:
-        await message.answer("Callback Expired", show_alert=True)
+        await message.answer("⏰ sᴏʀğᴜɴᴜɴ ᴠᴀxᴛı ʙɪᴛɪʙ", show_alert=True)
         await c.deleteMessages(message.chat_id, [message.message_id])
         return
 
@@ -64,23 +65,23 @@ async def callback_query(c: Client, message: types.UpdateNewCallbackQuery):
                                                  input_message_content=types.InputMessageAudio(audio=audio, caption=caption))
                 if isinstance(reply, types.Error):
                     c.logger.error(f"Failed to send audio file: {reply.message}bb")
-                    await message.edit_message_text(f"Failed to send the song. Please try again later.\n{reply.message}")
+                    await message.edit_message_text(f"📥 ᴍᴀʜɴı ɢöɴᴅəʀɪʟə ʙɪʟᴍəᴅɪ. ᴅᴀʜᴀ sᴏɴʀᴀ ʏᴇɴɪᴅəɴ ʏᴏxʟᴀʏıɴ.\n{reply.message}")
                 return
 
 
-    await message.answer("⏳ Processing your track, please wait...", show_alert=True)
+    await message.answer("⏳ ᴍᴀʜɴı ʜᴀᴢıʀʟᴀɴıʀ, ᴢəʜᴍəᴛ ᴏʟᴍᴀsᴀ ɢöᴢʟəʏɪɴ...", show_alert=True)
     api = ApiData(url)
     track = await api.get_track()
     if isinstance(track, types.Error):
-        await message.edit_message_text(f"Failed to fetch track: {track.message or 'Unknown error'}")
+        await message.edit_message_text(f"❌ ᴍᴀʜɴı ᴍəʟᴜᴍᴀᴛʟᴀʀı ᴀʟıɴᴍᴀᴅı: {track.message or 'Unknown error'}")
         return
 
-    msg = await message.edit_message_text("🔄 Downloading the song...")
+    msg = await message.edit_message_text("🔄 ᴍᴀʜɴı ʏüᴋʟəɴɪʀ...")
     if isinstance(msg, types.Error):
         c.logger.warning(f"❌ Failed to edit message: {msg.message}")
         return
 
-    # Process the track media
+    # Media emalı
     result = await process_track_media(c, track, chat_id=message.chat_id, message_id=message.message_id)
     if isinstance(result, types.Error):
         await message.edit_message_text(result.message)
@@ -88,10 +89,10 @@ async def callback_query(c: Client, message: types.UpdateNewCallbackQuery):
 
     audio, cover, caption = result
     if not audio:
-        await message.edit_message_text("No Audio")
+        await message.edit_message_text("⚠️ səs ғᴀʏʟı ᴛᴀᴘıʟᴍᴀᴅı")
         return
 
-    # Send the audio
+    # Mahnını göndər
     reply = await c.editMessageMedia(
         chat_id=message.chat_id,
         message_id=message.message_id,
@@ -109,4 +110,5 @@ async def callback_query(c: Client, message: types.UpdateNewCallbackQuery):
             await msg.delete()
             return
         c.logger.error(f"Failed to send audio file: {reply.message}: {audio}")
-        await msg.edit_text(f"Failed to send the song. Please try again later.\n{reply.message}")
+        await msg.edit_text(f"❌ ᴍᴀʜɴı ɢöɴᴅəʀɪʟə ʙɪʟᴍəᴅɪ. ᴅᴀʜᴀ sᴏɴʀᴀ ʏᴇɴɪᴅəɴ ʏᴏxʟᴀʏıɴ.\n{reply.message}")
+        
