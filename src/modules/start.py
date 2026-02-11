@@ -6,7 +6,7 @@ from pytdbot import Client, types
 from src import StartTime
 from src.utils import Filter, ApiData
 
-from ._fsub import fsub
+# fsub (məcburi abunəlik) silindi
 from ._utils import StartMessage
 
 
@@ -14,146 +14,110 @@ def get_main_menu_keyboard(bot_username: str) -> types.ReplyMarkupInlineKeyboard
     return types.ReplyMarkupInlineKeyboard([
         [
             types.InlineKeyboardButton(
-                text="➕ Add to Group",
+                text="📢 ᴍəʟᴜᴍᴀᴛ ᴋᴀɴᴀʟı",
+                type=types.InlineKeyboardButtonTypeUrl(url="https://t.me/ht_bots")
+            ),
+            types.InlineKeyboardButton(
+                text="💬 ᴋöᴍəᴋ ǫʀᴜᴘᴜ",
+                type=types.InlineKeyboardButtonTypeUrl(url="https://t.me/ht_bots_chat")
+            )
+        ],
+        [
+            types.InlineKeyboardButton(
+                text="➕ ǫʀᴜᴘᴀ əʟᴀᴠə ᴇᴛ",
                 type=types.InlineKeyboardButtonTypeUrl(
                     url=f"https://t.me/{bot_username}?startgroup=true"
                 )
             ),
             types.InlineKeyboardButton(
-                text="📂 GitHub",
+                text="⚡ᴅᴇᴠᴇʟᴏᴘᴇʀ⚡",
                 type=types.InlineKeyboardButtonTypeUrl(
-                    url="https://github.com/AshokShau/SpTubeBot"
+                    url="https://t.me/kullaniciadidi"
                 )
             )
         ],
         [
             types.InlineKeyboardButton(
-                text="Spotify",
+                text="🎧 sᴘᴏᴛɪғʏ",
                 type=types.InlineKeyboardButtonTypeCallback("help_spotify".encode())
             ),
             types.InlineKeyboardButton(
-                text="YouTube",
+                text="🎥 ʏᴏᴜᴛᴜʙᴇ",
                 type=types.InlineKeyboardButtonTypeCallback("help_youtube".encode())
             )
         ],
         [
             types.InlineKeyboardButton(
-                text="SoundCloud",
+                text="☁️ sᴏᴜɴᴅᴄʟᴏᴜᴅ",
                 type=types.InlineKeyboardButtonTypeCallback("help_soundcloud".encode())
             ),
             types.InlineKeyboardButton(
-                text="Apple Music",
+                text="🍎 ᴀᴘᴘʟᴇ ᴍᴜsɪᴄ",
                 type=types.InlineKeyboardButtonTypeCallback("help_apple".encode())
             )
         ],
         [
             types.InlineKeyboardButton(
-                text="Instagram",
+                text="📸 ɪɴsᴛᴀɢʀᴀᴍ",
                 type=types.InlineKeyboardButtonTypeCallback("help_instagram".encode())
             ),
             types.InlineKeyboardButton(
-                text="Pinterest",
+                text="📌 ᴘɪɴᴛᴇʀᴇsᴛ",
                 type=types.InlineKeyboardButtonTypeCallback("help_pinterest".encode())
             )
         ],
         [
             types.InlineKeyboardButton(
-                text="Facebook",
+                text="👥 ғᴀᴄᴇʙᴏᴏᴋ",
                 type=types.InlineKeyboardButtonTypeCallback("help_facebook".encode())
             ),
             types.InlineKeyboardButton(
-                text="Twitter",
+                text="🐦 ᴛᴡɪᴛᴛᴇʀ (x)",
                 type=types.InlineKeyboardButtonTypeCallback("help_twitter".encode())
             )
         ],
         [
             types.InlineKeyboardButton(
-                text="TikTok",
+                text="🎵 ᴛɪᴋᴛᴏᴋ",
                 type=types.InlineKeyboardButtonTypeCallback("help_tiktok".encode())
             ),
             types.InlineKeyboardButton(
-                text="Threads",
+                text="🧵 ᴛʜʀᴇᴀᴅs",
                 type=types.InlineKeyboardButtonTypeCallback("help_threads".encode())
             )
         ],
         [
             types.InlineKeyboardButton(
-                text="Reddit",
+                text="🧡 ʀᴇᴅᴅɪᴛ",
                 type=types.InlineKeyboardButtonTypeCallback("help_reddit".encode())
             ),
             types.InlineKeyboardButton(
-                text="Twitch",
+                text="🎮 ᴛᴡɪᴛᴄʜ",
                 type=types.InlineKeyboardButtonTypeCallback("help_twitch".encode())
             )
         ]
     ])
 
 
-
 @Client.on_message(filters=Filter.command(["start", "help"]))
-@fsub
 async def welcome(c: Client, message: types.Message):
     bot_username = c.me.usernames.editable_username
     bot_name = c.me.first_name
 
-    reply = await message.reply_text(
+    await message.reply_text(
         StartMessage.format(bot_name=bot_name, bot_username=bot_username),
         parse_mode="html",
         disable_web_page_preview=True,
         reply_markup=get_main_menu_keyboard(bot_username)
     )
 
-    if isinstance(reply, types.Error):
-        c.logger.warning(f"Error sending start/help message: {reply.message}")
-
-
-
 @Client.on_message(filters=Filter.command("privacy"))
 async def privacy_handler(_: Client, message: types.Message):
     await message.reply_text(
-        "🔒 <b>Privacy Policy</b>\n\n"
-        "This bot does <b>not store</b> any personal data or chat history.\n"
-        "All queries are processed in real time and nothing is logged.\n\n"
-        "🛠️ <b>Open Source</b> — You can inspect and contribute:\n"
-        "<a href=\"https://github.com/AshokShau/SpTubeBot\">github.com/AshokShau/SpTubeBot</a>",
+        "🔒 <b>ᴍəxғɪʟɪᴋ sɪʏᴀsəᴛɪ</b>\n\n"
+        "ʙᴜ ʙᴏᴛ ʜᴇç ʙɪʀ şəxssɪ ᴍəʟᴜᴍᴀᴛı ʏᴀᴅᴅᴀ sᴀxʟᴀᴍıʀ.\n"
+        "ʙüᴛüɴ sᴏʀğᴜʟᴀʀ ʀᴇᴀʟ ᴠᴀxᴛ ʀᴇᴊɪᴍɪɴᴅə ᴇᴍᴀʟ ᴏʟᴜɴᴜʀ.",
         parse_mode="html",
         disable_web_page_preview=True
     )
-
-
-
-@Client.on_message(filters=Filter.command("ping"))
-async def ping_cmd(client: Client, message: types.Message) -> None:
-    start_time = time.monotonic()
-    reply_msg = await message.reply_text("🏓 Pinging...")
-    latency = (time.monotonic() - start_time) * 1000  # in ms
-    uptime = datetime.now() - StartTime
-    uptime_str = str(uptime).split(".")[0]
-
-    response = (
-        "📊 <b>System Performance Metrics</b>\n\n"
-        f"⏱️ <b>Bot Latency:</b> <code>{latency:.2f} ms</code>\n"
-        f"⏱️ <b>Uptime:</b> <code>{uptime_str}</code>\n"
-        f"👤 <b>Developer:</b> <a href=\"https://t.me/AshokShau\">@AshokShau</a>"
-    )
-    done = await reply_msg.edit_text(response, disable_web_page_preview=True)
-    if isinstance(done, types.Error):
-        client.logger.warning(f"Error sending message: {done}")
-    return None
-
-@Client.on_message(filters=Filter.command("math"))
-async def math_cmd(client: Client, message: types.Message):
-    parts = message.text.split(" ", 1)
-    if len(parts) < 2:
-        await message.reply_text("Please provide a search query.")
-        return None
-
-    query = parts[1]
-    client.logger.info(f"Processing math query: {query}")
-    result = await ApiData(query).evaluate()
-    if isinstance(result, types.Error):
-        await message.reply_text(result.message or "An error occurred.")
-        return None
-
-    await message.reply_text(result)
-    return None
+    
