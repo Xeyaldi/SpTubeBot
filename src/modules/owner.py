@@ -24,13 +24,12 @@ def format_exception(
     exp: BaseException, tb: Optional[list[traceback.FrameSummary]] = None
 ) -> str:
     """
-    Formats an exception traceback as a string, similar to the Python interpreter.
+    Xətaları Python tərcüməçisinə bənzər şəkildə formatlayır.
     """
 
     if tb is None:
         tb = traceback.extract_tb(exp.__traceback__)
 
-    # Replace absolute paths with relative paths
     cwd = os.getcwd()
     for frame in tb:
         if cwd in frame.filename:
@@ -47,17 +46,15 @@ def format_exception(
 @Client.on_message(filters=Filter.command("eval"))
 async def exec_eval(c: Client, m: types.Message) -> None:
     """
-    Run python code.
+    Python kodunu işə salır.
     """
     user_id = m.from_id
     if user_id != OWNER_ID:
         return None
 
-
-
     text = m.text.split(None, 1)
     if len(text) <= 1:
-        reply = await m.reply_text("Usage: /eval &lt code &gt")
+        reply = await m.reply_text("🔎 ɪsᴛɪғᴀᴅə: /eval <ᴋᴏᴅ>")
         if isinstance(reply, types.Error):
             c.logger.warning(reply.message)
         return None
@@ -106,14 +103,12 @@ async def exec_eval(c: Client, m: types.Message) -> None:
                     first_snip_idx = i
                     break
 
-            # Re-raise exception if it wasn't caused by the snippet
             if first_snip_idx == -1:
                 raise e
 
-            # Return formatted stripped traceback
             stripped_tb = tb[first_snip_idx:]
             formatted_tb = format_exception(e, tb=stripped_tb)
-            return "⚠️ Error:\n\n", formatted_tb
+            return "⚠️ xəᴛᴀ:\n\n", formatted_tb
 
     prefix, result = await _eval()
 
@@ -124,7 +119,7 @@ async def exec_eval(c: Client, m: types.Message) -> None:
     if out.endswith("\n"):
         out = out[:-1]
 
-    result = f"""{prefix}<b>In:</b>
+    result = f"""{prefix}<b>ɪɴ:</b>
 <pre language="python">{escape(code)}</pre>
 <b>ᴏᴜᴛ:</b>
 <pre language="python">{escape(out)}</pre>"""
@@ -157,7 +152,6 @@ async def exec_eval(c: Client, m: types.Message) -> None:
     return None
 
 async def run_shell_command(cmd: str, timeout: int = 60) -> tuple[str, str, int]:
-    """Execute shell command and return stdout, stderr, returncode."""
     process = await asyncio.create_subprocess_shell(
         cmd,
         stdout=asyncio.subprocess.PIPE,
@@ -177,20 +171,11 @@ async def run_shell_command(cmd: str, timeout: int = 60) -> tuple[str, str, int]
 async def shellrunner(message: types.Message) -> types.Ok | types.Error | types.Message:
     text = message.text.split(None, 1)
     if len(text) <= 1:
-        reply = await message.reply_text("Usage: /sh &lt cmd &gt")
+        reply = await message.reply_text("🔎 ɪsᴛɪғᴀᴅə: /sh <əᴍʀ>")
         return reply if isinstance(reply, types.Error) else types.Ok()
     command = text[1]
-    """
-    # Security check - prevent dangerous commands
-    if any(blocked in command.lower() for blocked in [
-        'rm -rf', 'sudo', 'dd ', 'mkfs', 'fdisk',
-        ':(){:|:&};:', 'chmod 777', 'wget', 'curl'
-    ]):
-        return await message.reply_text("⚠️ Dangerous command blocked!")
-    """
 
     try:
-        # Execute single command or multiple commands separated by newlines
         if "\n" in command:
             commands = [cmd.strip() for cmd in command.split("\n") if cmd.strip()]
             output_parts = []
@@ -198,27 +183,26 @@ async def shellrunner(message: types.Message) -> types.Ok | types.Error | types.
             for cmd in commands:
                 stdout, stderr, retcode = await run_shell_command(cmd)
 
-                output_parts.append(f"<b>🚀 Command:</b> <code>{cmd}</code>")
+                output_parts.append(f"<b>🚀 əᴍʀ:</b> <code>{cmd}</code>")
                 if stdout:
-                    output_parts.append(f"<b>📤 Output:</b>\n<pre>{stdout}</pre>")
+                    output_parts.append(f"<b>📤 ɴəᴛɪᴄə:</b>\n<pre>{stdout}</pre>")
                 if stderr:
-                    output_parts.append(f"<b>❌ Error:</b>\n<pre>{stderr}</pre>")
-                output_parts.append(f"<b>🔢 Exit Code:</b> <code>{retcode}</code>\n")
+                    output_parts.append(f"<b>❌ xəᴛᴀ:</b>\n<pre>{stderr}</pre>")
+                output_parts.append(f"<b>🔢 ᴇxɪᴛ ᴄᴏᴅᴇ:</b> <code>{retcode}</code>\n")
 
             output = "\n".join(output_parts)
         else:
             stdout, stderr, retcode = await run_shell_command(command)
 
-            output = f"<b>🚀 Command:</b> <code>{command}</code>\n"
+            output = f"<b>🚀 əᴍʀ:</b> <code>{command}</code>\n"
             if stdout:
-                output += f"<b>📤 Output:</b>\n<pre>{stdout}</pre>\n"
+                output += f"<b>📤 ɴəᴛɪᴄə:</b>\n<pre>{stdout}</pre>\n"
             if stderr:
-                output += f"<b>❌ Error:</b>\n<pre>{stderr}</pre>\n"
-            output += f"<b>🔢 Exit Code:</b> <code>{retcode}</code>"
+                output += f"<b>❌ xəᴛᴀ:</b>\n<pre>{stderr}</pre>\n"
+            output += f"<b>🔢 ᴇxɪᴛ ᴄᴏᴅᴇ:</b> <code>{retcode}</code>"
 
-        # Handle empty output
         if not output.strip():
-            output = "<b>📭 No output was returned</b>"
+            output = "<b>📭 ɴəᴛɪᴄə ᴀʟıɴᴍᴀᴅı</b>"
 
         if len(output) <= 2000:
             return await message.reply_text(str(output), parse_mode="html")
@@ -228,7 +212,7 @@ async def shellrunner(message: types.Message) -> types.Ok | types.Error | types.
             file.write(output)
         reply = await message.reply_document(
             document=types.InputFileLocal(filename),
-            caption="📁 Output too large, sending as file:",
+            caption="📁 ɴəᴛɪᴄə çᴏx ʙöʏüᴋᴅüʀ, ғᴀʏʟ ᴋɪᴍɪ ɢöɴᴅəʀɪʟɪʀ:",
             disable_notification=True,
             parse_mode="html",
         )
@@ -241,7 +225,7 @@ async def shellrunner(message: types.Message) -> types.Ok | types.Error | types.
         return types.Ok()
     except Exception as e:
         return await message.reply_text(
-            f"⚠️ <b>Error:</b>\n<pre>{str(e)}</pre>", parse_mode="html"
+            f"⚠️ <b>xəᴛᴀ:</b>\n<pre>{str(e)}</pre>", parse_mode="html"
         )
 
 
