@@ -31,7 +31,7 @@ async def _handle_media_upload(
     }.get(media_type)
 
     if not send_func:
-        return types.Error(message="Unsupported media type")
+        return types.Error(message="ᴅəsᴛəᴋʟəɴᴍəʏəɴ ᴍᴇᴅɪᴀ ɴöᴠü")
 
     input_file = types.InputFileRemote(media_url)
     kwargs = {media_type: input_file, "caption": text}
@@ -98,7 +98,7 @@ async def _send_media_album(
                 )
             )
         else:
-            return types.Error(message="Unsupported media type")
+            return types.Error(message="ᴅəsᴛəᴋʟəɴᴍəʏəɴ ᴍᴇᴅɪᴀ ɴöᴠü")
 
     result = await client.sendMessageAlbum(
         chat_id=message.chat_id,
@@ -117,20 +117,20 @@ async def _send_media_album(
     return None
 
 async def process_insta_query(client: Client, message: types.Message, query: str) -> None:
-    reply = await message.reply_text("⏳ Processing...")
+    reply = await message.reply_text("⏳ ᴍᴇᴅɪᴀ ᴇᴍᴀʟ ᴏʟᴜɴᴜʀ...")
     api = ApiData(query)
     api_data: Union[SnapResponse, types.Error, None] = await api.get_snap()
     if isinstance(api_data, types.Error) or not api_data:
-        await reply.edit_text(f"❌ Error: {api_data.message if api_data else 'No results found'}")
+        await reply.edit_text(f"❌ xəᴛᴀ: {api_data.message if api_data else 'ɴəᴛɪᴄə ᴛᴀᴘıʟᴍᴀᴅı'}")
         return
 
-    raw_caption = api_data.title or "#FA"
+    raw_caption = api_data.title or "#sᴘᴛᴜʙᴇ"
     if len(raw_caption) >= 1000:
         raw_caption = raw_caption[:1000] + "..."
 
     caption = html.escape(raw_caption)
 
-    # --- Handle Images ---
+    # --- Şəkillər ---
     if api_data.images:
         for batch in batch_chunks(api_data.images, 10):
             error = await (
@@ -140,10 +140,10 @@ async def process_insta_query(client: Client, message: types.Message, query: str
             )
 
             if error:
-                await reply.edit_text(f"❌ Failed to send photo(s): {error.message}")
+                await reply.edit_text(f"❌ şəᴋɪʟʟəʀɪɴ ɢöɴᴅəʀɪʟᴍəsɪ ʙᴀş ᴛᴜᴛᴍᴀᴅı: {error.message}")
                 return
 
-    # --- Handle Audio ---
+    # --- Səs faylları ---
     if api_data.audios:
         audio_urls = [a.url for a in api_data.audios if a.url]
         for batch in batch_chunks(audio_urls, 10):
@@ -154,7 +154,7 @@ async def process_insta_query(client: Client, message: types.Message, query: str
             ):
                 client.logger.warning(f"❌ Failed to send audio(s): {error.message}")
 
-    # --- Handle Videos ---
+    # --- Videolar ---
     if api_data.videos:
         video_urls = [v.url for v in api_data.videos if v.url]
         if not video_urls:
@@ -163,7 +163,7 @@ async def process_insta_query(client: Client, message: types.Message, query: str
 
         if len(video_urls) == 1:
             if error := await _handle_media_upload(client, message, video_urls[0], "video", reply, caption):
-                await reply.edit_text(f"❌ Failed to send video: {error.message}")
+                await reply.edit_text(f"❌ ᴠɪᴅᴇᴏ ɢöɴᴅəʀɪʟə ʙɪʟᴍəᴅɪ: {error.message}")
             else:
                 await reply.delete()
             return
@@ -177,7 +177,7 @@ async def process_insta_query(client: Client, message: types.Message, query: str
             (videos_with_audio if result else videos_without_audio).append(url)
 
         if not videos_with_audio and not videos_without_audio:
-            await reply.edit_text("❌ No valid videos found.")
+            await reply.edit_text("❌ ᴠᴀʟɪᴅ ᴠɪᴅᴇᴏ ᴛᴀᴘıʟᴍᴀᴅı.")
             return
 
         for batch in batch_chunks(videos_with_audio, 10):
@@ -187,7 +187,7 @@ async def process_insta_query(client: Client, message: types.Message, query: str
                 else _send_media_album(client, message, batch, "video", caption)
             )
             if error:
-                await reply.edit_text(f"❌ Failed to send video(s): {error.message}")
+                await reply.edit_text(f"❌ ᴠɪᴅᴇᴏʟᴀʀıɴ ɢöɴᴅəʀɪʟᴍəsɪ ʙᴀş ᴛᴜᴛᴍᴀᴅı: {error.message}")
                 return
             await asyncio.sleep(1)
 
@@ -195,7 +195,6 @@ async def process_insta_query(client: Client, message: types.Message, query: str
             await reply.delete()
             return
 
-        # Send videos without audio as animations
         for i, url in enumerate(videos_without_audio):
             current_caption = caption if i == 0 else None
             if error := await _handle_media_upload(client, message, url, "animation", reply, current_caption):
@@ -209,13 +208,13 @@ async def process_insta_query(client: Client, message: types.Message, query: str
 async def insta_cmd(client: Client, message: types.Message) -> None:
     parts = message.text.split(" ", 1)
     if len(parts) < 2 or not parts[1].strip():
-        await message.reply_text("Please provide a valid search query.")
+        await message.reply_text("🔎 ᴢəʜᴍəᴛ ᴏʟᴍᴀsᴀ, ᴅüzɢüɴ ʟɪɴᴋ ɢöɴᴅəʀɪɴ.")
         return None
 
     api = ApiData(parts[1].strip())
     valid_url = api.extract_save_snap_url()
     if not valid_url:
-        await message.reply_text("Please provide a valid search query.")
+        await message.reply_text("⚠️ ᴠᴀʟɪᴅ ᴍᴇᴅɪᴀ ʟɪɴᴋɪ ᴛᴀᴘıʟᴍᴀᴅı.")
         return None
 
     await process_insta_query(client, message, valid_url)
@@ -228,5 +227,20 @@ async def insta_autodetect(client: Client, message: types.Message):
     valid_url = api.extract_save_snap_url()
     if not valid_url:
         return None
+            await process_insta_query(client, message, valid_url)
+    raise StopHandlers
+
+@Client.on_message(filters=Filter.save_snap())
+@fsub
+async def insta_autodetect(client: Client, message: types.Message):
+    api = ApiData(message.text.strip())
+    valid_url = api.extract_save_snap_url()
+    if not valid_url:
+        return None
+        
+    await process_insta_query(client, message, valid_url)
+    raise StopHandlers
+
+    
     await process_insta_query(client, message, valid_url)
     raise StopHandlers
