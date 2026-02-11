@@ -11,7 +11,7 @@ from ._dataclass import Spotify
 
 
 async def convert_to_m4a(input_file: str, cover_file: str, track: Spotify) -> str | None:
-    """Convert audio to M4A with cover art and metadata."""
+    """Audio faylı üz qabığı və metadata ilə M4A formatına çevirir."""
     abs_input = os.path.abspath(input_file)
     abs_cover = os.path.abspath(cover_file)
     output_file = f"{os.path.splitext(abs_input)[0]}.m4a"
@@ -30,7 +30,7 @@ async def convert_to_m4a(input_file: str, cover_file: str, track: Spotify) -> st
         "-metadata", f"album={track.album}",
         "-metadata", f"year={track.year}",
         "-metadata", "genre=Spotify",
-        "-metadata", "comment=Via NoiNoi_bot | FallenProjects",
+        "-metadata", "comment=Via SpTube Bot",
         "-f", "mp4",
         output_file,
     ]
@@ -41,8 +41,7 @@ async def convert_to_m4a(input_file: str, cover_file: str, track: Spotify) -> st
     stdout, stderr = await proc.communicate()
 
     if proc.returncode != 0:
-        print(f"ffmpeg failed:\n{stderr.decode(errors='ignore')}")
-        print(f"stdout:\n{stdout.decode(errors='ignore')}")
+        print(f"ғғᴍᴘᴇɢ xəᴛᴀsı:\n{stderr.decode(errors='ignore')}")
         return None
 
     return output_file
@@ -58,7 +57,7 @@ class MongoDB:
         self._cache: dict[str, str] = {}
 
     async def connect(self) -> None:
-        """Establish connection to MongoDB and load cache."""
+        """ᴍᴏɴɢᴏᴅʙ ʙᴀğʟᴀɴᴛısı ǫᴜʀᴜʟᴜʀ ᴠə ᴋᴇş ʏüᴋʟəɴɪʀ."""
         await self.mongo_client.aconnect()
         try:
             await self.mongo_client.admin.command("ping")
@@ -67,17 +66,17 @@ class MongoDB:
         await self._load_cache()
 
     async def _load_cache(self) -> None:
-        """Load all stored songs into in-memory cache."""
+        """Bazada olan bütün mahnıları operativ yaddaşa (cache) yükləyir."""
         async for song in self.songs.find():
             self._cache[song["_id"]] = song["link"]
 
     async def store_song_link(self, track_id: str, link: str) -> None:
-        """Store or update a song link in MongoDB and cache."""
+        """Mahnı linkini bazada saxlayır və keşləyir."""
         await self.songs.update_one({"_id": track_id}, {"$set": {"link": link}}, upsert=True)
         self._cache[track_id] = link
 
     async def get_song_link(self, track_id: str) -> Optional[str]:
-        """Retrieve song link from cache or MongoDB."""
+        """Mahnı linkini keşdən və ya bazadan götürür."""
         if track_id in self._cache:
             return self._cache[track_id]
 
@@ -88,7 +87,7 @@ class MongoDB:
         return None
 
     async def get_song_file_id(self, track_id: str) -> tuple[Optional[str], Optional[types.FormattedText]]:
-        """Retrieve the Telegram file ID for a stored song link."""
+        """Saxlanılan link üçün Telegram fayl ID-sini əldə edir."""
         from src import client
 
         link = await self.get_song_link(track_id)
@@ -97,12 +96,12 @@ class MongoDB:
 
         info = await client.getMessageLinkInfo(url=link)
         if isinstance(info, types.Error) or not info.message:
-            client.logger.warning(f"❌ Failed to get message link info: {getattr(info, 'message', info)}")
+            client.logger.warning(f"❌ ᴍᴇsᴀᴊ ʟɪɴᴋɪ ᴍəʟᴜᴍᴀᴛı ᴀʟıɴᴍᴀᴅı: {getattr(info, 'message', info)}")
             return None, None
 
         msg = await client.getMessage(info.chat_id, info.message.id)
         if isinstance(msg, types.Error):
-            client.logger.warning(f"❌ Failed to get message: {msg.message}")
+            client.logger.warning(f"❌ ᴍᴇsᴀᴊ ᴛᴀᴘıʟᴍᴀᴅı: {msg.message}")
             return None, None
 
         content = msg.content
@@ -114,14 +113,14 @@ class MongoDB:
         elif isinstance(content, types.MessageVideo):
             return content.video.video.remote.id, text
 
-        client.logger.warning(f"❌ Unsupported media type in stored link: {content}")
+        client.logger.warning(f"❌ ᴅəsᴛəᴋʟəɴᴍəʏəɴ ᴍᴇᴅɪᴀ ɴöᴠü: {content}")
         await self.remove_song(track_id)
         return None, text
 
     async def upload_song_and_get_file_id(
             self, file_path: str, cover: Optional[str], track: Spotify
     ) -> tuple[Optional[str], types.FormattedText] | types.Error:
-        """Upload song to logger chat, store link, and return file ID."""
+        """Mahnını arxiv kanalına yükləyir və ID qaytarır."""
         from src import client
 
         thumb = types.InputThumbnail(thumbnail=types.InputFileLocal(cover) if cover else types.InputFileRemote(track.cover), width=640, height=640)
@@ -132,19 +131,18 @@ class MongoDB:
                 album_cover_thumbnail=thumb,
                 title=track.name,
                 performer=track.artist,
-                duration=track.duration,
                 caption=f"<b>{track.name}</b>\n<i>{track.artist}</i>",
             )
 
         upload = await _send(file_path)
 
-        # Handle "uploaded as voice" issue (TG MOOD)
+        # Səs qeydi kimi yüklənmə xətası (FFmpeg ilə düzəliş)
         if not isinstance(upload, types.Error) and isinstance(upload.content, types.MessageVoiceNote):
             fixed_path = await convert_to_m4a(file_path, cover, track)
             if not fixed_path:
                 public_link = await client.getMessageLink(upload.chat_id, upload.id)
                 return types.Error(
-                    message=f"Failed to upload audio - here is your song: {public_link.link or 'No Link 2x sed moment'}"
+                    message=f"ᴍᴀʜɴı ʏüᴋʟəɴᴍəᴅɪ - ʟɪɴᴋ: {public_link.link or 'ʟɪɴᴋ ᴛᴀᴘıʟᴍᴀᴅı'}"
                 )
 
             await upload.delete()
@@ -153,40 +151,38 @@ class MongoDB:
             try:
                 os.remove(fixed_path)
             except Exception as e:
-                client.logger.warning(f"❌ Failed to remove converted file: {e}")
+                client.logger.warning(f"❌ ᴄᴏɴᴠᴇʀᴛ ᴏʟᴜɴᴍᴜş ғᴀʏʟ sɪʟɪɴᴍəᴅɪ: {e}")
 
         if isinstance(upload, types.Error):
-            client.logger.warning(f"❌ Failed to upload audio: {upload.message}")
+            client.logger.warning(f"❌ ᴀᴜᴅɪᴏ ʏüᴋʟəɴᴍəᴅɪ: {upload.message}")
             return upload
 
         public_link = await client.getMessageLink(upload.chat_id, upload.id)
         if isinstance(public_link, types.Error):
-            client.logger.warning(f"❌ Failed to get public link: {public_link.message}")
+            client.logger.warning(f"❌ ᴘᴜʙʟɪᴄ ʟɪɴᴋ ᴀʟıɴᴍᴀᴅı: {public_link.message}")
             return public_link
 
         try:
             os.remove(file_path)
         except Exception as e:
-            client.logger.warning(f"❌ Failed to remove original file: {e}")
+            client.logger.warning(f"❌ ᴏʀɪᴊɪɴᴀʟ ғᴀʏʟ sɪʟɪɴᴍəᴅɪ: {e}")
 
         if isinstance(upload.content, types.MessageAudio):
             await self.store_song_link(track.tc, public_link.link)
             return upload.content.audio.audio.remote.id, upload.content.caption
 
-        client.logger.info(f"file_path: {file_path} | cover: {cover}")
-        client.logger.warning(f"❌ Unsupported media type in uploaded audio: {upload}")
         return types.Error(
-            message=f"Failed to upload audio - here is your song: {public_link.link}"
+            message=f"ᴍᴀʜɴı ʏüᴋʟəɴᴍəᴅɪ - ʟɪɴᴋ: {public_link.link}"
         )
 
     async def remove_song(self, track_id: str) -> None:
-        """Remove song from MongoDB and cache."""
+        """Mahnını bazadan və keşdən silir."""
         await self.songs.delete_one({"_id": track_id})
         if track_id in self._cache:
             del self._cache[track_id]
 
     async def close(self) -> None:
-        """Close MongoDB connection and clear cache."""
+        """Bağlantını kəsir."""
         await self.mongo_client.aclose()
         self._cache.clear()
 
