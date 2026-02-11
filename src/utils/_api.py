@@ -24,7 +24,7 @@ T = TypeVar("T")
 _client: Optional[httpx.AsyncClient] = None
 
 class HttpClient:
-    """Singleton Async HTTP client."""
+    """sɪɴɢʟᴇᴛᴏɴ ᴀsʏɴᴄ ʜᴛᴛᴘ ᴄʟɪᴇɴᴛ."""
     @staticmethod
     async def get_client() -> httpx.AsyncClient:
         global _client
@@ -58,7 +58,7 @@ class ApiData:
         self.api_url = config.API_URL
         self.query = self._sanitize_input(query.strip()) if query else ""
 
-    # --- Validasiya ---
+    # --- ᴠᴀʟɪᴅᴀsɪʏᴀ ---
     def is_valid(self) -> bool:
         if not self.query or len(self.query) > MAX_URL_LENGTH:
             return False
@@ -82,10 +82,10 @@ class ApiData:
     def is_save_snap_url(self) -> bool:
         return bool(self.extract_save_snap_url())
 
-    # --- API Metodları ---
+    # --- ᴀᴘɪ ᴍᴇᴛᴏᴅʟᴀʀı ---
     async def get_info(self) -> Union[types.Error, SearchResponse]:
         if not self.is_valid():
-            return types.Error(message="ʟɪɴᴋ ᴠᴀʟɪᴅ ᴅᴇʏɪʟ")
+            return types.Error(message="Url is not valid")
         return await self._request_json(
             f"{self.api_url}/api/get_url?url={urllib.parse.quote(self.query)}",
             SearchResponse, list_key="results", item_model=Track
@@ -107,7 +107,7 @@ class ApiData:
 
     async def get_snap(self) -> Union[types.Error, SnapResponse]:
         if not self.is_save_snap_url():
-            return types.Error(message="ʟɪɴᴋ ᴠᴀʟɪᴅ ᴅᴇʏɪʟ")
+            return types.Error(message="Url is not valid")
         return await self._request_json(
             f"{self.api_url}/api/snap?url={urllib.parse.quote(self.query)}",
             SnapResponse
@@ -125,16 +125,16 @@ class ApiData:
             response = await client.get(endpoint, headers=headers)
             response.raise_for_status()
             body = response.text.strip()
-            return body or types.Error(message="ʏᴀɴʟış ʀɪʏᴀᴢɪ ɪғᴀᴅə")
+            return body or types.Error(message="Invalid Math Expression")
         except Exception as e:
             return types.Error(message=f"ʜᴇsᴀʙʟᴀᴍᴀ ʙᴀş ᴛᴜᴛᴍᴀᴅı: {e}")
 
-    # --- Köməkçilər ---
+    # --- ᴋöᴍəᴋçɪʟəʀ ---
     async def _request_json(
         self, endpoint: str, model: Type[T],
         list_key: Optional[str] = None, item_model: Optional[Type] = None
     ) -> Union[types.Error, T]:
-        """Generic API sorğu -> model emalı"""
+        """ᴀᴘɪ sᴏʀğᴜ ᴇᴍᴀʟı"""
         client = await HttpClient.get_client()
         try:
             response = await client.get(endpoint, headers=self._get_headers())
@@ -147,7 +147,7 @@ class ApiData:
         except httpx.HTTPStatusError as e:
             error_data = e.response.json()
             api_message = error_data.get("message") or "ʙɪʟɪɴᴍəʏəɴ xəᴛᴀ"
-            return types.Error(message=f"sᴏʀğᴜ ʙᴀş ᴛᴜᴛᴍᴀᴅı: {api_message}")
+            return types.Error(message=f"Request failed: {api_message}")
         except httpx.RequestError as e:
             return types.Error(message=f"ʜᴛᴛᴘ xəᴛᴀsı: {e}")
         except (ValueError, TypeError) as e:
