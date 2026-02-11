@@ -22,6 +22,7 @@ MAX_CONCURRENT_DOWNLOADS = 5
 T = TypeVar("T")
 
 _client: Optional[httpx.AsyncClient] = None
+
 class HttpClient:
     """Singleton Async HTTP client."""
     @staticmethod
@@ -57,7 +58,7 @@ class ApiData:
         self.api_url = config.API_URL
         self.query = self._sanitize_input(query.strip()) if query else ""
 
-    # --- Validation ---
+    # --- Validasiya ---
     def is_valid(self) -> bool:
         if not self.query or len(self.query) > MAX_URL_LENGTH:
             return False
@@ -81,10 +82,10 @@ class ApiData:
     def is_save_snap_url(self) -> bool:
         return bool(self.extract_save_snap_url())
 
-    # --- API Methods ---
+    # --- API Metodları ---
     async def get_info(self) -> Union[types.Error, SearchResponse]:
         if not self.is_valid():
-            return types.Error(message="Url is not valid")
+            return types.Error(message="ʟɪɴᴋ ᴠᴀʟɪᴅ ᴅᴇʏɪʟ")
         return await self._request_json(
             f"{self.api_url}/api/get_url?url={urllib.parse.quote(self.query)}",
             SearchResponse, list_key="results", item_model=Track
@@ -106,7 +107,7 @@ class ApiData:
 
     async def get_snap(self) -> Union[types.Error, SnapResponse]:
         if not self.is_save_snap_url():
-            return types.Error(message="Url is not valid")
+            return types.Error(message="ʟɪɴᴋ ᴠᴀʟɪᴅ ᴅᴇʏɪʟ")
         return await self._request_json(
             f"{self.api_url}/api/snap?url={urllib.parse.quote(self.query)}",
             SnapResponse
@@ -124,16 +125,16 @@ class ApiData:
             response = await client.get(endpoint, headers=headers)
             response.raise_for_status()
             body = response.text.strip()
-            return body or types.Error(message="Invalid Math Expression")
+            return body or types.Error(message="ʏᴀɴʟış ʀɪʏᴀᴢɪ ɪғᴀᴅə")
         except Exception as e:
-            return types.Error(message=f"Evaluation failed: {e}")
+            return types.Error(message=f"ʜᴇsᴀʙʟᴀᴍᴀ ʙᴀş ᴛᴜᴛᴍᴀᴅı: {e}")
 
-    # --- Helpers ---
+    # --- Köməkçilər ---
     async def _request_json(
         self, endpoint: str, model: Type[T],
         list_key: Optional[str] = None, item_model: Optional[Type] = None
     ) -> Union[types.Error, T]:
-        """Generic API request -> model parser"""
+        """Generic API sorğu -> model emalı"""
         client = await HttpClient.get_client()
         try:
             response = await client.get(endpoint, headers=self._get_headers())
@@ -145,14 +146,14 @@ class ApiData:
             return model(**data)
         except httpx.HTTPStatusError as e:
             error_data = e.response.json()
-            api_message = error_data.get("message") or "Unknown error"
-            return types.Error(message=f"Request failed: {api_message}")
+            api_message = error_data.get("message") or "ʙɪʟɪɴᴍəʏəɴ xəᴛᴀ"
+            return types.Error(message=f"sᴏʀğᴜ ʙᴀş ᴛᴜᴛᴍᴀᴅı: {api_message}")
         except httpx.RequestError as e:
-            return types.Error(message=f"HTTP error: {e}")
+            return types.Error(message=f"ʜᴛᴛᴘ xəᴛᴀsı: {e}")
         except (ValueError, TypeError) as e:
-            return types.Error(message=f"Invalid JSON: {e}")
+            return types.Error(message=f"ʏᴀɴʟış ᴊsᴏɴ: {e}")
         except Exception as e:
-            return types.Error(message=f"Unexpected error: {e}")
+            return types.Error(message=f"ɢöᴢʟəɴɪʟᴍəʏəɴ xəᴛᴀ: {e}")
 
     @staticmethod
     def _get_headers() -> Dict[str, str]:
