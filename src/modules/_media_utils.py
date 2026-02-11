@@ -18,9 +18,10 @@ async def process_track_media(c: Client, track: 'TrackResponse', chat_id: Option
                                                                                                                 InputFileRemote, str | None, None] | \
                                                                                                             tuple[
                                                                                                                 InputFileRemote | InputFileLocal, str | None]:
-    parsed_status = await c.parseTextEntities("<b>Processing your track, please wait...</b>", types.TextParseModeHTML())
+    # "Processing your track..." -> "ᴍᴀʜɴı ʜᴀᴢıʀʟᴀɴıʀ, ᴢəʜᴍəᴛ ᴏʟᴍᴀsᴀ ɢöᴢʟəʏɪɴ..."
+    parsed_status = await c.parseTextEntities("<b>⏳ ᴍᴀʜɴı ʜᴀᴢıʀʟᴀɴıʀ, ᴢəʜᴍəᴛ ᴏʟᴍᴀsᴀ ɢöᴢʟəʏɪɴ...</b>", types.TextParseModeHTML())
     text = types.InputMessageText(parsed_status)
-    # Update status message
+    
     if inline_message_id:
         await c.editInlineMessageText(inline_message_id=inline_message_id, input_message_content=text)
     elif chat_id and message_id:
@@ -30,22 +31,22 @@ async def process_track_media(c: Client, track: 'TrackResponse', chat_id: Option
     if track.platform.lower() == "spotify":
         _track = await api.spotify()
         if isinstance(_track, types.Error):
-            error_msg = f"Download failed.\n<b>{_track.message}</b>"
+            error_msg = f"📥 ʏüᴋʟəᴍə ʙᴀş ᴛᴜᴛᴍᴀᴅı.\n<b>{_track.message}</b>"
             return types.Error(message=error_msg)
 
         dl = Download(_track)
         result = await dl.process()
         if isinstance(result, types.Error):
-            error_msg = f"❌ Download failed.\n<b>{result.message}</b>"
+            error_msg = f"❌ ʏüᴋʟəᴍə xəᴛᴀsı.\n<b>{result.message}</b>"
             return types.Error(message=error_msg)
 
         audio_file, cover = result
         if not audio_file:
-            return types.Error(message="Failed to download song.\nPlease report this to @FallenProjects.")
+            return types.Error(message="⚠️ ᴍᴀʜɴı ʏüᴋʟəɴə ʙɪʟᴍəᴅɪ.\nᴢəʜᴍəᴛ ᴏʟᴍᴀsᴀ, ʀəsᴍɪ ᴋᴀɴᴀʟᴀ ʙɪʟᴅɪʀɪɴ.")
 
         file_id = await db.upload_song_and_get_file_id(audio_file, cover, _track)
         if isinstance(file_id, types.Error):
-            return types.Error(message=file_id.message or "❌ Failed to send song to database.")
+            return types.Error(message=file_id.message or "❌ ᴍᴀʟᴜᴍᴀᴛ ʙᴀᴢᴀsı ɪʟə əʟᴀǫə ᴋəsɪʟᴅɪ.")
 
         if isinstance(file_id, tuple):
             file_id, caption = file_id
@@ -58,22 +59,22 @@ async def process_track_media(c: Client, track: 'TrackResponse', chat_id: Option
     dl = Download(track)
     result = await dl.process()
     if isinstance(result, types.Error):
-        error_msg = f"❌ Download failed.\n<b>{result.message}</b>"
+        error_msg = f"❌ ʏüᴋʟəᴍə xəᴛᴀsı.\n<b>{result.message}</b>"
         return types.Error(message=error_msg)
 
     audio_file, cover = result
     if not audio_file:
-        error_msg = "❌ Failed to download song.\nPlease report this to @FallenProjects."
+        error_msg = "❌ ᴍᴀʜɴı ʏüᴋʟəɴə ʙɪʟᴍəᴅɪ.\nᴢəʜᴍəᴛ ᴏʟᴍᴀsᴀ, ʀəsᴍɪ ᴋᴀɴᴀʟᴀ ʙɪʟᴅɪʀɪɴ."
         return types.Error(message=error_msg)
 
     if re.match(r"https?://t\.me/([^/]+)/(\d+)", audio_file):
         info = await c.getMessageLinkInfo(audio_file)
         if isinstance(info, types.Error) or not info.message:
-            return types.Error(message=f"❌ Failed to resolve link: {audio_file}")
+            return types.Error(message=f"❌ ʟɪɴᴋ ᴀçıʟᴍᴀᴅı: {audio_file}")
 
         public_msg = await c.getMessage(info.chat_id, info.message.id)
         if isinstance(public_msg, types.Error):
-            return types.Error(message="❌ Failed to fetch message: {public_msg.message}")
+            return types.Error(message=f"❌ ᴍᴇsᴀᴊ ᴀʟıɴᴍᴀᴅı: {public_msg.message}")
 
         if isinstance(public_msg.content, types.MessageAudio):
             audio = types.InputFileRemote(public_msg.content.audio.audio.remote.id)
@@ -82,7 +83,7 @@ async def process_track_media(c: Client, track: 'TrackResponse', chat_id: Option
         elif isinstance(public_msg.content, types.MessageVideo):
             audio = types.InputFileRemote(public_msg.content.video.video.remote.id)
         else:
-            return types.Error(message=f"No audio file in t.me link: {audio_file}")
+            return types.Error(message=f"ʟɪɴᴋdə səs ғᴀʏʟı ʏᴏxᴅᴜʀ: {audio_file}")
     else:
         audio = types.InputFileLocal(audio_file)
 
@@ -90,12 +91,12 @@ async def process_track_media(c: Client, track: 'TrackResponse', chat_id: Option
 
 
 def get_reply_markup(track_name: str, artist: str) -> types.ReplyMarkupInlineKeyboard:
-    """Generate a reply markup with the track name and update button."""
+    """Mahnı göndəriləndə altındakı düymələr"""
     return types.ReplyMarkupInlineKeyboard(
         [
             [
                 types.InlineKeyboardButton(
-                    text=track_name,
+                    text=f"🎧 {track_name}",
                     type=types.InlineKeyboardButtonTypeSwitchInline(
                         query=artist,
                         target_chat=types.TargetChatCurrent()
@@ -103,10 +104,12 @@ def get_reply_markup(track_name: str, artist: str) -> types.ReplyMarkupInlineKey
                 )
             ],
             [
+                # "Update" düyməsini "Məlumat Kanalı" düyməsi ilə əvəz etdim
                 types.InlineKeyboardButton(
-                    text="Update ",
-                    type=types.InlineKeyboardButtonTypeUrl("https://t.me/FallenProjects"),
+                    text="📢 ᴍəʟᴜᴍᴀᴛ ᴋᴀɴᴀʟı",
+                    type=types.InlineKeyboardButtonTypeUrl("https://t.me/SƏNİN_KANAL_LİNKİN"),
                 )
             ]
         ]
     )
+    
