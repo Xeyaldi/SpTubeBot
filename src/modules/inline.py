@@ -29,7 +29,7 @@ async def inline_search(c: Client, message: types.UpdateNewInlineQuery):
                 types.InputInlineQueryResultArticle(
                     id=str(uuid.uuid4()),
                     title="❌ ᴀxᴛᴀʀış ʙᴀş ᴛᴜᴛᴍᴀᴅı",
-                    description=search.message or "sᴘᴏᴛɪғʏ ᴀxᴛᴀʀışı ᴍüᴍᴋüɴ ᴏʟᴍᴀᴅı.",
+                    description=search.message or "sᴘᴏᴛɪғʏ-ᴅə ᴀxᴛᴀʀış ᴇᴅɪʟə ʙɪʟᴍəᴅɪ.",
                 )
             ]
         )
@@ -39,8 +39,8 @@ async def inline_search(c: Client, message: types.UpdateNewInlineQuery):
     for track in search.results:
         display_text = (
             f"<b>🎧 ᴍᴀʜɴı:</b> <b>{escape(track.title)}</b>\n"
-            f"<b>👤 səɴəᴛçɪ:</b> <i>{escape(track.channel)}</i>\n"
-            f"<b>⏱ ᴍüᴅᴅəᴛ:</b> {track.duration // 60}:{track.duration % 60:02d} ᴅəǫ\n"
+            f"<b>👤 sənəᴛçɪ:</b> <i>{escape(track.channel)}</i>\n"
+            f"<b>⏱ ᴍüᴅᴅəᴛ:</b> {track.duration // 60}:{track.duration % 60:02d} dəq\n"
             f"<b>🔗 ᴘʟᴀᴛғᴏʀᴍ:</b> {track.platform.capitalize()}\n"
             f"<code>{track.id}</code>"
         )
@@ -56,7 +56,7 @@ async def inline_search(c: Client, message: types.UpdateNewInlineQuery):
             types.InputInlineQueryResultArticle(
                 id=shortener.encode_url(track.url),
                 title=f"{track.title} - {track.channel}",
-                description=f"{track.channel} ᴛəʀəғɪɴᴅəɴ {track.title}",
+                description=f"{track.title} | {track.channel}",
                 thumbnail_url=track.thumbnail,
                 thumbnail_width=640,
                 thumbnail_height=640,
@@ -97,7 +97,7 @@ async def inline_result(c: Client, message: types.UpdateNewChosenInlineResult):
                 if isinstance(reply, types.Error):
                     c.logger.error(f"Failed to send audio file: {reply.message}")
                     parsed_status = await c.parseTextEntities(
-                        f"❌ ᴍᴀʜɴı ɢöɴᴅəʀɪʟə ʙɪʟᴍəᴅɪ. ᴅᴀʜᴀ sᴏɴʀᴀ ʏᴇɴɪᴅəɴ ʏᴏxʟᴀʏıɴ. {reply.message}", types.TextParseModeHTML())
+                        f"❌ ᴍᴀʜɴı ɢöɴᴅəʀɪʟə ʙɪʟᴍəᴅɪ. ᴢəʜᴍəᴛ ᴏʟᴍᴀsᴀ, ʙɪʀ ᴀᴢ sᴏɴʀᴀ ʏᴇɴɪᴅəɴ ʏᴏxʟᴀʏıɴ.\n\n{reply.message}", types.TextParseModeHTML())
                     await c.editInlineMessageText(inline_message_id=inline_message_id,
                                                   input_message_content=types.InputMessageText(parsed_status))
                 return
@@ -108,7 +108,7 @@ async def inline_result(c: Client, message: types.UpdateNewChosenInlineResult):
 
     track = await api.get_track()
     if isinstance(track, types.Error):
-        parsed_status = await c.parseTextEntities(f"❌ ᴍᴀʜɴı ᴍəʟᴜᴍᴀᴛʟᴀʀı ᴀʟıɴᴍᴀᴅı: {track.message or 'Unknown error'}",
+        parsed_status = await c.parseTextEntities(f"❌ ᴍəʟᴜᴍᴀᴛʟᴀʀ ᴀʟıɴᴍᴀᴅı: {track.message or 'Unknown error'}",
                                                   types.TextParseModeHTML())
         await c.editInlineMessageText(
             inline_message_id=inline_message_id,
@@ -116,7 +116,6 @@ async def inline_result(c: Client, message: types.UpdateNewChosenInlineResult):
         )
         return
 
-    # Media emalı
     result = await process_track_media(c, track, inline_message_id=inline_message_id)
     if isinstance(result, types.Error):
         parsed_status = await c.parseTextEntities(result.message, types.TextParseModeHTML())
@@ -128,14 +127,13 @@ async def inline_result(c: Client, message: types.UpdateNewChosenInlineResult):
 
     audio, cover, caption = result
     if not audio:
-        parsed_status = await c.parseTextEntities("⚠️ səs ғᴀʏʟı ᴛᴀᴘıʟᴍᴀᴅı", types.TextParseModeHTML())
+        parsed_status = await c.parseTextEntities("❌ səs ғᴀʏʟı ᴛᴀᴘıʟᴍᴀᴅı", types.TextParseModeHTML())
         await c.editInlineMessageText(
             inline_message_id=inline_message_id,
             input_message_content=types.InputMessageText(parsed_status)
         )
         return
 
-    # Audio göndər
     reply = await c.editInlineMessageMedia(
         inline_message_id=inline_message_id,
         input_message_content=types.InputMessageAudio(
@@ -148,7 +146,7 @@ async def inline_result(c: Client, message: types.UpdateNewChosenInlineResult):
     if isinstance(reply, types.Error):
         c.logger.error(f"❌ Failed to send audio file: {reply.message}")
         parsed_status = await c.parseTextEntities(
-            f"❌ ᴍᴀʜɴı ɢöɴᴅəʀɪʟə ʙɪʟᴍəᴅɪ. ᴅᴀʜᴀ sᴏɴʀᴀ ʏᴇɴɪᴅəɴ ʏᴏxʟᴀʏıɴ. {reply.message}",
+            f"❌ ᴍᴀʜɴı ɢöɴᴅəʀɪʟə ʙɪʟᴍəᴅɪ. ʟütғəɴ, ʙɪʀ ᴀᴢ sᴏɴʀᴀ ʏᴇɴɪᴅəɴ ʏᴏxʟᴀʏıɴ.\n\n{reply.message}",
             types.TextParseModeHTML(),
         )
         await c.editInlineMessageText(
@@ -162,7 +160,7 @@ async def process_snap_inline(c: Client, message: types.UpdateNewInlineQuery, qu
     api_data: Union[SnapResponse, types.Error, None] = await api.get_snap()
 
     if isinstance(api_data, types.Error) or not api_data:
-        text = api_data.message.strip() or "ʙɪʟɪɴᴍəʏəɴ ʙɪʀ xəᴛᴀ ʙᴀş ᴠᴇʀᴅɪ."
+        text = "❌ ᴍᴇᴅɪᴀ ᴍəʟᴜᴍᴀᴛʟᴀʀı ᴀʟıɴᴍᴀᴅı."
         parse = await c.parseTextEntities(text, types.TextParseModeHTML())
         await c.answerInlineQuery(
             inline_query_id=message.id,
@@ -170,7 +168,7 @@ async def process_snap_inline(c: Client, message: types.UpdateNewInlineQuery, qu
                 types.InputInlineQueryResultArticle(
                     id=str(uuid.uuid4()),
                     title="❌ ᴀxᴛᴀʀış ʙᴀş ᴛᴜᴛᴍᴀᴅı",
-                    description="ɴəsə səʜᴠ ɢᴇᴛᴅɪ.",
+                    description="ʙɪʀ xəᴛᴀ ʙᴀş ᴠᴇʀᴅɪ.",
                     input_message_content=types.InputMessageText(text=parse)
                 )
             ],
@@ -183,7 +181,7 @@ async def process_snap_inline(c: Client, message: types.UpdateNewInlineQuery, qu
         [
             [
                 types.InlineKeyboardButton(
-                    text="🔎 ʏᴇɴɪᴅəɴ ᴀxᴛᴀʀ",
+                    text="🔄 ʏᴇɴɪᴅəɴ ᴀxᴛᴀʀ",
                     type=types.InlineKeyboardButtonTypeSwitchInline(
                         query=query, target_chat=types.TargetChatCurrent()
                     ),
@@ -197,8 +195,8 @@ async def process_snap_inline(c: Client, message: types.UpdateNewInlineQuery, qu
             id=str(uuid.uuid4()),
             photo_url=image_url,
             thumbnail_url=image_url,
-            title=f"şəᴋɪʟ {idx + 1}",
-            description=f"şəᴋɪʟ ɴəᴛɪᴄəsɪ #{idx + 1}",
+            title=f"Şəkil {idx + 1}",
+            description=f"ɴəᴛɪᴄə #{idx + 1}",
             input_message_content=types.InputMessagePhoto(
                 photo=types.InputFileRemote(image_url)
             ),
@@ -222,7 +220,7 @@ async def process_snap_inline(c: Client, message: types.UpdateNewInlineQuery, qu
                 thumbnail_url=thumb_url if thumb_url and re.match("^https?://",
                                                                   thumb_url) else "https://i.pinimg.com/736x/e2/c6/eb/e2c6eb0b48fc00f1304431bfbcacf50e.jpg",
                 title=f"ᴠɪᴅᴇᴏ {idx + 1}",
-                description=f"ᴠɪᴅᴇᴏ ɴəᴛɪᴄəsɪ #{idx + 1}",
+                description=f"ᴠɪᴅᴇᴏ ɴəᴛɪᴄə #{idx + 1}",
                 input_message_content=types.InputMessageVideo(
                     video=types.InputFileRemote(video_url),
                     thumbnail=types.InputThumbnail(types.InputFileRemote(thumb_url or video_url))
@@ -232,12 +230,12 @@ async def process_snap_inline(c: Client, message: types.UpdateNewInlineQuery, qu
         )
 
     if not results:
-        parse = await c.parseTextEntities("ʙᴜ sᴏʀğᴜ üçüɴ ᴍᴇᴅɪᴀ ᴛᴀᴘıʟᴍᴀᴅı", types.TextParseModeHTML())
+        parse = await c.parseTextEntities("❌ ʙᴜ sᴏʀğᴜ üçüɴ ᴍᴇᴅɪᴀ ᴛᴀᴘıʟᴍᴀᴅı", types.TextParseModeHTML())
         results.append(
             types.InputInlineQueryResultArticle(
                 id=str(uuid.uuid4()),
-                title="ᴍᴇᴅɪᴀ ᴛᴀᴘıʟᴍᴀᴅı",
-                description="ғəʀǫʟɪ ʙɪʀ ᴀxᴛᴀʀış sᴏʀğᴜsᴜ ʏᴏxʟᴀʏıɴ",
+                title="ɴəᴛɪᴄə ᴛᴀᴘıʟᴍᴀᴅı",
+                description="ғəʀǫʟɪ ᴀxᴛᴀʀış sᴏᴢü ʏᴏxʟᴀʏıɴ",
                 input_message_content=types.InputMessageText(text=parse)
             )
         )
@@ -255,9 +253,9 @@ async def process_snap_inline(c: Client, message: types.UpdateNewInlineQuery, qu
                 types.InputInlineQueryResultArticle(
                     id=str(uuid.uuid4()),
                     title="❌ ᴀxᴛᴀʀış ʙᴀş ᴛᴜᴛᴍᴀᴅı",
-                    description="ᴏʟᴀ ʙɪʟsɪɴ ᴠɪᴅᴇᴏ öʟçüsü çᴏx ʙöʏüᴋᴅüʀ.",
+                    description="ᴠɪᴅᴇᴏ öʟçüsü çᴏx ʙöʏüᴋ ᴏʟᴀ ʙɪʟəʀ.",
                     input_message_content=types.InputMessageText(text=done.message)
                 )
             ],
             cache_time=5
-        )
+                )
