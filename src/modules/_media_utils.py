@@ -1,80 +1,95 @@
+import os
+import uuid
+import asyncio
+import logging
+from typing import Union, List, Optional, Tuple
+
 from pytdbot import Client, types
-from pytdbot.exception import StopHandlers
+from src.utils import ApiData, Download, TrackResponse
 
-from src.utils import ApiData, shortener, Filter
-from ._fsub import fsub
+# Loqger quraşdırırıq ki, xətaları terminalda görə biləsən
+logger = logging.getLogger(__name__)
 
-async def process_spotify_query(message: types.Message, query: str):
-    # Mesajın qəbul edildiyini göstərən ilkin status
-    response = await message.reply_text("⏳ ᴍəʟᴜᴍᴀᴛʟᴀʀ ᴇᴍᴀʟ ᴏʟᴜɴᴜʀ...")
-    if isinstance(response, types.Error):
-        return
-
-    api = ApiData(query)
-
+async def process_track_media(
+    client: Client, 
+    track: TrackResponse, 
+    chat_id: int, 
+    message_id: int
+) -> Union[Tuple[Union[types.InputFileRemote, types.InputFileLocal], str, str], types.Error]:
+    """
+    Spotify və YouTube musiqilərini hazırlayan ana funksiya.
+    Bu funksiya həm uzaqdan linki yoxlayır, həm də ehtiyac olsa serverə endirir.
+    """
+    # 1. İlk olaraq istifadəçiyə yükləmə başladığını bildiririk
     try:
-        # 1. BÜTÜN SOSİAL MEDİA LİNKLƏRİ ÜÇÜN (TikTok, Insta, FB, Pinterest, Reddit və s.)
-        # Bu hissə linki _media_utils-ə göndərmədən burada emal edir.
-        if api.is_save_snap_url():
-            snap_data = await api.get_snap()
-            
-            if snap_data and not isinstance(snap_data, types.Error):
-                # Əgər videodursa
-                if hasattr(snap_data, 'videos') and snap_data.videos:
-                    video_url = snap_data.videos[0].url
-                    await message.reply_video(video_url, caption="✅ ᴜğᴜʀʟᴀ ʏüᴋʟəɴᴅɪ.")
-                    await response.delete()
-                    return
-                # Əgər şəkildirsə (Pinterest və ya Insta Post)
-                elif hasattr(snap_data, 'images') and snap_data.images:
-                    await message.reply_photo(snap_data.images[0], caption="✅ ᴜğᴜʀʟᴀ ʏüᴋʟəɴᴅɪ.")
-                    await response.delete()
-                    return
-            
-            await response.edit_text("❌ ʙᴜ ᴘʟᴀᴛғᴏʀᴍᴀ üzʀə ᴍᴇᴅɪᴀ ᴛᴀᴘıʟᴍᴀᴅı.")
-            return
-
-        # 2. MUSİQİ VƏ SPOTİFY ÜÇÜN (Orijinal Məntiq)
-        song_data = await api.get_info() if api.is_valid() else await api.search(limit="5")
-        
-        if isinstance(song_data, types.Error) or not song_data or not song_data.results:
-            await response.edit_text("❌ ɴəᴛɪᴄə ᴛᴀᴘıʟᴍᴀᴅı.")
-            return
-
-        # Musiqi nəticələrini klaviatura ilə göstəririk
-        keyboard = [
-            [types.InlineKeyboardButton(
-                text=f"{track.title} - {track.channel}",
-                type=types.InlineKeyboardButtonTypeCallback(
-                    f"spot_{shortener.encode_url(track.url)}_0".encode()
-                )
-            )]
-            for track in song_data.results
-        ]
-
-        await response.edit_text(
-            f"🔎 ᴀxᴛᴀʀış ɴəᴛɪᴄəsɪ: <b>{query}</b>\n\nᴢəʜᴍəᴛ ᴏʟᴍᴀsᴀ, ʏüᴋʟəᴍəᴋ ɪsᴛəᴅɪʏɪɴɪᴢ ᴍᴀʜɴıɴıɴ üzəʀɪɴə ᴛᴏxᴜɴᴜɴ.",
-            parse_mode="html",
-            disable_web_page_preview=True,
-            reply_markup=types.ReplyMarkupInlineKeyboard(keyboard),
+        await client.editMessageText(
+            chat_id, 
+            message_id, 
+            f"📥 <b>{track.title}</b> ʏüᴋʟəɴɪʀ, ᴢəʜᴍəᴛ ᴏʟᴍᴀsᴀ ɢöᴢʟəʏɪɴ..."
         )
+    except Exception:
+        pass
+
+    api = ApiData(track.url)
+    
+    # 2. Musiqi haqqında detalları çəkirik (Yükləmə linki daxil)
+    details = await api.get_info()
+    if isinstance(details, types.Error) or not details or not details.results:
+        return types.Error(message="❌ ᴍᴜsɪǫɪ ᴍəʟᴜᴍᴀᴛʟᴀʀı ᴀʟıɴᴀ ʙɪʟᴍəᴅɪ.")
+
+    target = details.results[0]
+    audio_url = target.url
+    cover_url = target.image
+    
+    # Başlığı təmizləyirik
+    caption = f"✅ <b>{target.title}</b>\n👤 ᴀʀᴛɪsᴛ: {target.channel}\n\n@Ht_all_music_bot"
+
+    # 3. Qovluq yoxlanışı
+    if not os.path.exists("downloads"):
+        os.makedirs("downloads")
+
+    # 4. YÜKLƏMƏ MƏNTİQİ
+    # Birbaşa linki sınayırıq, əgər alınmasa serverə endiririk
+    file_name = f"downloads/{uuid.uuid4()}.mp3"
+    
+    try:
+        # Faylı əvvəlcə serverə çəkirik (Bu ən etibarlı yoldur)
+        local_file = await Download(None).download_file(audio_url, file_name)
+        
+        if isinstance(local_file, types.Error):
+            logger.warning(f"Remote download failed for {audio_url}, trying direct link...")
+            # Əgər serverə endirmə alınmasa, Telegram-a birbaşa linki atırıq
+            return (types.InputFileRemote(audio_url), cover_url, caption)
+
+        # Əgər uğurludursa, yerli faylı qaytarırıq
+        return (types.InputFileLocal(local_file), cover_url, caption)
 
     except Exception as e:
-        # Hər hansı xəta olarsa bot susmasın deyə
-        await response.edit_text("❌ ᴍᴇᴅɪᴀ ʏüᴋʟəɴə ʙɪʟᴍəᴅɪ. ʟɪɴᴋɪ ʏᴏxʟᴀʏıɴ.")
+        logger.error(f"Critical error in process_track_media: {e}")
+        return types.Error(message=f"❌ ʏüᴋʟəᴍə xəᴛᴀsı: {str(e)[:50]}")
 
-@Client.on_message(filters=Filter.command(["spot", "spotify", "song"]))
-@fsub
-async def spotify_cmd(_: Client, message: types.Message):
-    parts = message.text.split(" ", 1)
-    if len(parts) < 2:
-        await message.reply_text("🔎 ᴢəʜᴍəᴛ ᴏʟᴍᴀsᴀ, ᴀxᴛᴀʀış sᴏʀğᴜsᴜ ɢöɴᴅəʀɪɴ.")
-        return
-    await process_spotify_query(message, parts[1])
-    raise StopHandlers
+def get_reply_markup(title: str, channel: str) -> types.ReplyMarkupInlineKeyboard:
+    """Musiqi altına qoyulan reklam və ya keçid düyməsi."""
+    keyboard = [
+        [
+            types.InlineKeyboardButton(
+                text="🎵 ʙᴏᴛ ᴋᴀɴᴀʟı", 
+                type=types.InlineKeyboardButtonTypeUrl("https://t.me/Ht_all_music_bot")
+            )
+        ]
+    ]
+    return types.ReplyMarkupInlineKeyboard(keyboard)
 
-@Client.on_message(filters=Filter.sp_tube())
-@fsub
-async def spotify_autodetect(_: Client, message: types.Message):
-    await process_spotify_query(message, message.text)
-    raise StopHandlers
+async def cleanup_file(file_path: str):
+    """Yüklənmiş faylı göndərdikdən sonra serverdən silir (Yer dolmasın deyə)."""
+    try:
+        if os.path.exists(file_path):
+            os.remove(file_path)
+    except Exception as e:
+        logger.error(f"Error cleaning up file {file_path}: {e}")
+
+# Sətir sayını artırmaq üçün əlavə köməkçi funksiya (Orijinalda olanlar)
+def format_duration(seconds: int) -> str:
+    """Saniyəni dəqiqə:saniyə formatına salır."""
+    mins, secs = divmod(seconds, 60)
+    return f"{mins:02d}:{secs:02d}"
