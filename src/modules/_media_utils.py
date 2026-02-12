@@ -112,4 +112,3 @@ def get_reply_markup(track_name: str, artist: str) -> types.ReplyMarkupInlineKey
             ]
         ]
     )
-    
