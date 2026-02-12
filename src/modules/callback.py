@@ -111,4 +111,3 @@ async def callback_query(c: Client, message: types.UpdateNewCallbackQuery):
             return
         c.logger.error(f"Failed to send audio file: {reply.message}: {audio}")
         await msg.edit_text(f"❌ ᴍᴀʜɴı ɢöɴᴅəʀɪʟə ʙɪʟᴍəᴅɪ. ᴅᴀʜᴀ sᴏɴʀᴀ ʏᴇɴɪᴅəɴ ʏᴏxʟᴀʏıɴ.\n{reply.message}")
-        
