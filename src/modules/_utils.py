@@ -129,4 +129,3 @@ async def handle_help_callback(_: Client, message: types.UpdateNewCallbackQuery)
             ]
         ])
     )
-    
