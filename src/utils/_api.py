@@ -22,7 +22,6 @@ MAX_CONCURRENT_DOWNLOADS = 5
 T = TypeVar("T")
 
 _client: Optional[httpx.AsyncClient] = None
-
 class HttpClient:
     """Singleton Async HTTP client."""
     @staticmethod
@@ -58,7 +57,7 @@ class ApiData:
         self.api_url = config.API_URL
         self.query = self._sanitize_input(query.strip()) if query else ""
 
-    # --- Validasiya ---
+    # --- Validation ---
     def is_valid(self) -> bool:
         if not self.query or len(self.query) > MAX_URL_LENGTH:
             return False
@@ -82,10 +81,9 @@ class ApiData:
     def is_save_snap_url(self) -> bool:
         return bool(self.extract_save_snap_url())
 
-    # --- API Metodları ---
+    # --- API Methods ---
     async def get_info(self) -> Union[types.Error, SearchResponse]:
         if not self.is_valid():
-            # BURANI DƏYİŞMƏ: Bot bu mətni yoxlayır
             return types.Error(message="Url is not valid")
         return await self._request_json(
             f"{self.api_url}/api/get_url?url={urllib.parse.quote(self.query)}",
@@ -108,7 +106,6 @@ class ApiData:
 
     async def get_snap(self) -> Union[types.Error, SnapResponse]:
         if not self.is_save_snap_url():
-            # BURANI DƏYİŞMƏ: Orijinal ingiliscə qalmalıdır
             return types.Error(message="Url is not valid")
         return await self._request_json(
             f"{self.api_url}/api/snap?url={urllib.parse.quote(self.query)}",
@@ -131,11 +128,12 @@ class ApiData:
         except Exception as e:
             return types.Error(message=f"Evaluation failed: {e}")
 
-    # --- Köməkçilər ---
+    # --- Helpers ---
     async def _request_json(
         self, endpoint: str, model: Type[T],
         list_key: Optional[str] = None, item_model: Optional[Type] = None
     ) -> Union[types.Error, T]:
+        """Generic API request -> model parser"""
         client = await HttpClient.get_client()
         try:
             response = await client.get(endpoint, headers=self._get_headers())
