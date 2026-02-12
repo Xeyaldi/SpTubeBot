@@ -124,8 +124,7 @@ class Filter:
             if chat_id is None:
                 return False
 
-            api = ApiData(text)
-            if api.is_valid() or api.is_save_snap_url():
+            if ApiData(text).is_valid():
                 return True
 
             return False if re.match("^https?://", text) else chat_id > 0
