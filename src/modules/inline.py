@@ -261,4 +261,3 @@ async def process_snap_inline(c: Client, message: types.UpdateNewInlineQuery, qu
             ],
             cache_time=5
         )
-        
