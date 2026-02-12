@@ -24,7 +24,7 @@ T = TypeVar("T")
 _client: Optional[httpx.AsyncClient] = None
 
 class HttpClient:
-    """sɪɴɢʟᴇᴛᴏɴ ᴀsʏɴᴄ ʜᴛᴛᴘ ᴄʟɪᴇɴᴛ."""
+    """Singleton Async HTTP client."""
     @staticmethod
     async def get_client() -> httpx.AsyncClient:
         global _client
@@ -58,7 +58,7 @@ class ApiData:
         self.api_url = config.API_URL
         self.query = self._sanitize_input(query.strip()) if query else ""
 
-    # --- ᴠᴀʟɪᴅᴀsɪʏᴀ ---
+    # --- Validasiya ---
     def is_valid(self) -> bool:
         if not self.query or len(self.query) > MAX_URL_LENGTH:
             return False
@@ -82,9 +82,10 @@ class ApiData:
     def is_save_snap_url(self) -> bool:
         return bool(self.extract_save_snap_url())
 
-    # --- ᴀᴘɪ ᴍᴇᴛᴏᴅʟᴀʀı ---
+    # --- API Metodları ---
     async def get_info(self) -> Union[types.Error, SearchResponse]:
         if not self.is_valid():
+            # BURANI DƏYİŞMƏ: Bot bu mətni yoxlayır
             return types.Error(message="Url is not valid")
         return await self._request_json(
             f"{self.api_url}/api/get_url?url={urllib.parse.quote(self.query)}",
@@ -107,6 +108,7 @@ class ApiData:
 
     async def get_snap(self) -> Union[types.Error, SnapResponse]:
         if not self.is_save_snap_url():
+            # BURANI DƏYİŞMƏ: Orijinal ingiliscə qalmalıdır
             return types.Error(message="Url is not valid")
         return await self._request_json(
             f"{self.api_url}/api/snap?url={urllib.parse.quote(self.query)}",
@@ -127,14 +129,13 @@ class ApiData:
             body = response.text.strip()
             return body or types.Error(message="Invalid Math Expression")
         except Exception as e:
-            return types.Error(message=f"ʜᴇsᴀʙʟᴀᴍᴀ ʙᴀş ᴛᴜᴛᴍᴀᴅı: {e}")
+            return types.Error(message=f"Evaluation failed: {e}")
 
-    # --- ᴋöᴍəᴋçɪʟəʀ ---
+    # --- Köməkçilər ---
     async def _request_json(
         self, endpoint: str, model: Type[T],
         list_key: Optional[str] = None, item_model: Optional[Type] = None
     ) -> Union[types.Error, T]:
-        """ᴀᴘɪ sᴏʀğᴜ ᴇᴍᴀʟı"""
         client = await HttpClient.get_client()
         try:
             response = await client.get(endpoint, headers=self._get_headers())
@@ -146,14 +147,14 @@ class ApiData:
             return model(**data)
         except httpx.HTTPStatusError as e:
             error_data = e.response.json()
-            api_message = error_data.get("message") or "ʙɪʟɪɴᴍəʏəɴ xəᴛᴀ"
+            api_message = error_data.get("message") or "Unknown error"
             return types.Error(message=f"Request failed: {api_message}")
         except httpx.RequestError as e:
-            return types.Error(message=f"ʜᴛᴛᴘ xəᴛᴀsı: {e}")
+            return types.Error(message=f"HTTP error: {e}")
         except (ValueError, TypeError) as e:
-            return types.Error(message=f"ʏᴀɴʟış ᴊsᴏɴ: {e}")
+            return types.Error(message=f"Invalid JSON: {e}")
         except Exception as e:
-            return types.Error(message=f"ɢöᴢʟəɴɪʟᴍəʏəɴ xəᴛᴀ: {e}")
+            return types.Error(message=f"Unexpected error: {e}")
 
     @staticmethod
     def _get_headers() -> Dict[str, str]:
