@@ -1,81 +1,68 @@
 from pytdbot import Client, types
 from pytdbot.exception import StopHandlers
-
-from src.utils import ApiData, shortener, Filter
+from src.utils import ApiData, Filter, shortener
 from ._fsub import fsub
+from ._media_utils import process_track_media, get_reply_markup
 
-
-async def process_spotify_query(message: types.Message, query: str):
-    # Botun reaksiya verdiyini görmək üçün ilk mesaj
-    response = await message.reply_text("⏳ ᴍəʟᴜᴍᴀᴛʟᴀʀ ᴇᴍᴀʟ ᴏʟᴜɴᴜʀ...")
-    if isinstance(response, types.Error):
+async def process_spotify_query(client: Client, message: types.Message, query: str):
+    # Mesajın qəbul edildiyini göstərən ilkin status
+    status = await message.reply_text("⏳ ᴍəʟᴜᴍᴀᴛʟᴀʀ ᴇᴍᴀʟ ᴏʟᴜɴᴜʀ...")
+    
+    api = ApiData(query)
+    
+    # 1. Əgər birbaşa linkdirsə (Spotify və ya YouTube)
+    if api.is_valid():
+        track_info = await api.get_info()
+        if track_info and track_info.results:
+            # Birbaşa yükləməyə göndəririk
+            res = await process_track_media(client, track_info.results[0], message.chat_id, status.id)
+            if not isinstance(res, types.Error):
+                audio, cover, caption = res
+                await message.reply_audio(
+                    audio,
+                    caption=caption,
+                    thumbnail=types.InputFileRemote(cover) if cover else None,
+                    reply_markup=get_reply_markup(track_info.results[0].title, track_info.results[0].channel)
+                )
+                await status.delete()
+                return
+        await status.edit_text("❌ ᴍᴇᴅɪᴀ ʏüᴋʟəɴə ʙɪʟᴍəᴅɪ.")
         return
 
-    api = ApiData(query)
+    # 2. Əgər axtarış sözüdürsə
+    search_results = await api.search(limit="5")
+    if not search_results or not search_results.results:
+        await status.edit_text("❌ ɴəᴛɪᴄə ᴛᴀᴘıʟᴍᴀᴅı.")
+        return
 
-    try:
-        # 1. Yoxlayırıq: Bu hər hansı bir sosial media linkidirmi? 
-        # (TikTok, Instagram, FB, Pinterest, Twitter, Reddit və s.)
-        if api.is_save_snap_url():
-            snap_data = await api.get_snap()
-            
-            if snap_data and not isinstance(snap_data, types.Error):
-                # Video tapılarsa
-                if snap_data.videos:
-                    await message.reply_video(snap_data.videos[0].url, caption="✅ ᴜğᴜʀʟᴀ ʏüᴋʟəɴᴅɪ.")
-                    await response.delete()
-                    return
-                # Şəkil tapılarsa (Pinterest/Insta post)
-                elif snap_data.images:
-                    await message.reply_photo(snap_data.images[0], caption="✅ ᴜğᴜʀʟᴀ ʏüᴋʟəɴᴅɪ.")
-                    await response.delete()
-                    return
-            
-            await response.edit_text("❌ ʙᴜ ʟɪɴᴋ üzʀə ᴍᴇᴅɪᴀ ᴛᴀᴘıʟᴍᴀᴅı.")
-            return
+    keyboard = []
+    for track in search_results.results:
+        # Linki qısaldırıq ki, düyməyə sığsın
+        callback_data = f"spot_{shortener.encode_url(track.url)}_0"
+        keyboard.append([types.InlineKeyboardButton(
+            text=f"{track.title} - {track.channel}",
+            type=types.InlineKeyboardButtonTypeCallback(callback_data.encode())
+        )])
 
-        # 2. Əgər sosial media deyilsə, Musiqi/Spotify axtarışına keç
-        song_data = await api.get_info() if api.is_valid() else await api.search(limit="5")
-        
-        if isinstance(song_data, types.Error) or not song_data or not song_data.results:
-            await response.edit_text("❌ ɴəᴛɪᴄə ᴛᴀᴘıʟᴍᴀᴅı.")
-            return
+    await status.edit_text(
+        f"🔎 ᴀxᴛᴀʀış ɴəᴛɪᴄəsɪ: <b>{query}</b>",
+        parse_mode="html",
+        reply_markup=types.ReplyMarkupInlineKeyboard(keyboard)
+    )
 
-        keyboard = [
-            [types.InlineKeyboardButton(
-                text=f"{track.title} - {track.channel}",
-                type=types.InlineKeyboardButtonTypeCallback(
-                    f"spot_{shortener.encode_url(track.url)}_0".encode()
-                )
-            )]
-            for track in song_data.results
-        ]
-
-        await response.edit_text(
-            f"🔎 ᴀxᴛᴀʀış ɴəᴛɪᴄəsɪ: <b>{query}</b>\n\nᴢəʜᴍəᴛ ᴏʟᴍᴀsᴀ, ʏüᴋʟəᴍəᴋ ɪsᴛəᴅɪʏɪɴɪᴢ ᴍᴀʜɴıɴıɴ üzəʀɪɴə ᴛᴏxᴜɴᴜɴ.",
-            parse_mode="html",
-            disable_web_page_preview=True,
-            reply_markup=types.ReplyMarkupInlineKeyboard(keyboard),
-        )
-
-    except Exception as e:
-        # Hər hansı texniki xəta olsa bot susmasın
-        await response.edit_text(f"❌ xəᴛᴀ: ᴍᴇᴅɪᴀ ᴇᴍᴀʟ ᴏʟᴜɴᴀ ʙɪʟᴍəᴅɪ.")
-
-
-@Client.on_message(filters=Filter.command(["spot", "spotify", "song"]))
+@Client.on_message(filters=Filter.command(["song", "spotify", "spot"]))
 @fsub
-async def spotify_cmd(_: Client, message: types.Message):
+async def song_cmd(client: Client, message: types.Message):
     parts = message.text.split(" ", 1)
     if len(parts) < 2:
-        await message.reply_text("🔎 ᴢəʜᴍəᴛ ᴏʟᴍᴀsᴀ, ᴀxᴛᴀʀış sᴏʀğᴜsᴜ ɢöɴᴅəʀɪɴ.")
+        await message.reply_text("🔎 ᴢəʜᴍəᴛ ᴏʟᴍᴀsᴀ, ᴍᴀʜɴı ᴀdı ᴠə ʏᴀ ʟɪɴᴋ ɢöɴᴅəʀɪɴ.")
         return
-    await process_spotify_query(message, parts[1])
+    await process_spotify_query(client, message, parts[1])
     raise StopHandlers
-
 
 @Client.on_message(filters=Filter.sp_tube())
 @fsub
-async def spotify_autodetect(_: Client, message: types.Message):
-    await process_spotify_query(message, message.text)
+async def song_autodetect(client: Client, message: types.Message):
+    # Bu filtr həm linkləri, həm də düz yazıları tutur
+    await process_spotify_query(client, message, message.text)
     raise StopHandlers
