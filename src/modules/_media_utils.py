@@ -1,114 +1,80 @@
-import re
-from typing import Optional, Union, TYPE_CHECKING
+from pytdbot import Client, types
+from pytdbot.exception import StopHandlers
 
-from pytdbot import types, Client
-from pytdbot.types import Error, InputFileLocal, InputFileRemote, FormattedText
+from src.utils import ApiData, shortener, Filter
+from ._fsub import fsub
 
-from src.utils import ApiData, Download, db
+async def process_spotify_query(message: types.Message, query: str):
+    # Mesajın qəbul edildiyini göstərən ilkin status
+    response = await message.reply_text("⏳ ᴍəʟᴜᴍᴀᴛʟᴀʀ ᴇᴍᴀʟ ᴏʟᴜɴᴜʀ...")
+    if isinstance(response, types.Error):
+        return
 
-if TYPE_CHECKING:
-    from src.utils._dataclass import TrackResponse
+    api = ApiData(query)
 
+    try:
+        # 1. BÜTÜN SOSİAL MEDİA LİNKLƏRİ ÜÇÜN (TikTok, Insta, FB, Pinterest, Reddit və s.)
+        # Bu hissə linki _media_utils-ə göndərmədən burada emal edir.
+        if api.is_save_snap_url():
+            snap_data = await api.get_snap()
+            
+            if snap_data and not isinstance(snap_data, types.Error):
+                # Əgər videodursa
+                if hasattr(snap_data, 'videos') and snap_data.videos:
+                    video_url = snap_data.videos[0].url
+                    await message.reply_video(video_url, caption="✅ ᴜğᴜʀʟᴀ ʏüᴋʟəɴᴅɪ.")
+                    await response.delete()
+                    return
+                # Əgər şəkildirsə (Pinterest və ya Insta Post)
+                elif hasattr(snap_data, 'images') and snap_data.images:
+                    await message.reply_photo(snap_data.images[0], caption="✅ ᴜğᴜʀʟᴀ ʏüᴋʟəɴᴅɪ.")
+                    await response.delete()
+                    return
+            
+            await response.edit_text("❌ ʙᴜ ᴘʟᴀᴛғᴏʀᴍᴀ üzʀə ᴍᴇᴅɪᴀ ᴛᴀᴘıʟᴍᴀᴅı.")
+            return
 
-async def process_track_media(c: Client, track: 'TrackResponse', chat_id: Optional[int] = None,
-                              message_id: Optional[int] = None, inline_message_id: Optional[str] = None) -> Error | \
-                                                                                                            tuple[
-                                                                                                                InputFileRemote, str | None, FormattedText] | \
-                                                                                                            tuple[
-                                                                                                                InputFileRemote, str | None, None] | \
-                                                                                                            tuple[
-                                                                                                                InputFileRemote | InputFileLocal, str | None]:
-    # "Processing your track..." -> "ᴍᴀʜɴı ʜᴀᴢıʀʟᴀɴıʀ, ᴢəʜᴍəᴛ ᴏʟᴍᴀsᴀ ɢöᴢʟəʏɪɴ..."
-    parsed_status = await c.parseTextEntities("<b>⏳ ᴍᴀʜɴı ʜᴀᴢıʀʟᴀɴıʀ, ᴢəʜᴍəᴛ ᴏʟᴍᴀsᴀ ɢöᴢʟəʏɪɴ...</b>", types.TextParseModeHTML())
-    text = types.InputMessageText(parsed_status)
-    
-    if inline_message_id:
-        await c.editInlineMessageText(inline_message_id=inline_message_id, input_message_content=text)
-    elif chat_id and message_id:
-        await c.editMessageText(chat_id=chat_id, message_id=message_id, input_message_content=text)
+        # 2. MUSİQİ VƏ SPOTİFY ÜÇÜN (Orijinal Məntiq)
+        song_data = await api.get_info() if api.is_valid() else await api.search(limit="5")
+        
+        if isinstance(song_data, types.Error) or not song_data or not song_data.results:
+            await response.edit_text("❌ ɴəᴛɪᴄə ᴛᴀᴘıʟᴍᴀᴅı.")
+            return
 
-    api = ApiData(track.url)
-    if track.platform.lower() == "spotify":
-        _track = await api.spotify()
-        if isinstance(_track, types.Error):
-            error_msg = f"📥 ʏüᴋʟəᴍə ʙᴀş ᴛᴜᴛᴍᴀᴅı.\n<b>{_track.message}</b>"
-            return types.Error(message=error_msg)
-
-        dl = Download(_track)
-        result = await dl.process()
-        if isinstance(result, types.Error):
-            error_msg = f"❌ ʏüᴋʟəᴍə xəᴛᴀsı.\n<b>{result.message}</b>"
-            return types.Error(message=error_msg)
-
-        audio_file, cover = result
-        if not audio_file:
-            return types.Error(message="⚠️ ᴍᴀʜɴı ʏüᴋʟəɴə ʙɪʟᴍəᴅɪ.\nᴢəʜᴍəᴛ ᴏʟᴍᴀsᴀ, ʀəsᴍɪ ᴋᴀɴᴀʟᴀ ʙɪʟᴅɪʀɪɴ.")
-
-        file_id = await db.upload_song_and_get_file_id(audio_file, cover, _track)
-        if isinstance(file_id, types.Error):
-            return types.Error(message=file_id.message or "❌ ᴍᴀʟᴜᴍᴀᴛ ʙᴀᴢᴀsı ɪʟə əʟᴀǫə ᴋəsɪʟᴅɪ.")
-
-        if isinstance(file_id, tuple):
-            file_id, caption = file_id
-            audio = types.InputFileRemote(file_id)
-            return audio, cover, caption
-
-        audio = types.InputFileRemote(file_id[0])
-        return audio, cover, None
-
-    dl = Download(track)
-    result = await dl.process()
-    if isinstance(result, types.Error):
-        error_msg = f"❌ ʏüᴋʟəᴍə xəᴛᴀsı.\n<b>{result.message}</b>"
-        return types.Error(message=error_msg)
-
-    audio_file, cover = result
-    if not audio_file:
-        error_msg = "❌ ᴍᴀʜɴı ʏüᴋʟəɴə ʙɪʟᴍəᴅɪ.\nᴢəʜᴍəᴛ ᴏʟᴍᴀsᴀ, ʀəsᴍɪ ᴋᴀɴᴀʟᴀ ʙɪʟᴅɪʀɪɴ."
-        return types.Error(message=error_msg)
-
-    if re.match(r"https?://t\.me/([^/]+)/(\d+)", audio_file):
-        info = await c.getMessageLinkInfo(audio_file)
-        if isinstance(info, types.Error) or not info.message:
-            return types.Error(message=f"❌ ʟɪɴᴋ ᴀçıʟᴍᴀᴅı: {audio_file}")
-
-        public_msg = await c.getMessage(info.chat_id, info.message.id)
-        if isinstance(public_msg, types.Error):
-            return types.Error(message=f"❌ ᴍᴇsᴀᴊ ᴀʟıɴᴍᴀᴅı: {public_msg.message}")
-
-        if isinstance(public_msg.content, types.MessageAudio):
-            audio = types.InputFileRemote(public_msg.content.audio.audio.remote.id)
-        elif isinstance(public_msg.content, types.MessageDocument):
-            audio = types.InputFileRemote(public_msg.content.document.document.remote.id)
-        elif isinstance(public_msg.content, types.MessageVideo):
-            audio = types.InputFileRemote(public_msg.content.video.video.remote.id)
-        else:
-            return types.Error(message=f"ʟɪɴᴋdə səs ғᴀʏʟı ʏᴏxᴅᴜʀ: {audio_file}")
-    else:
-        audio = types.InputFileLocal(audio_file)
-
-    return audio, cover, None
-
-
-def get_reply_markup(track_name: str, artist: str) -> types.ReplyMarkupInlineKeyboard:
-    """Mahnı göndəriləndə altındakı düymələr"""
-    return types.ReplyMarkupInlineKeyboard(
-        [
-            [
-                types.InlineKeyboardButton(
-                    text=f"🎧 {track_name}",
-                    type=types.InlineKeyboardButtonTypeSwitchInline(
-                        query=artist,
-                        target_chat=types.TargetChatCurrent()
-                    )
+        # Musiqi nəticələrini klaviatura ilə göstəririk
+        keyboard = [
+            [types.InlineKeyboardButton(
+                text=f"{track.title} - {track.channel}",
+                type=types.InlineKeyboardButtonTypeCallback(
+                    f"spot_{shortener.encode_url(track.url)}_0".encode()
                 )
-            ],
-            [
-                # "Update" düyməsini "Məlumat Kanalı" düyməsi ilə əvəz etdim
-                types.InlineKeyboardButton(
-                    text="📢 ᴍəʟᴜᴍᴀᴛ ᴋᴀɴᴀʟı",
-                    type=types.InlineKeyboardButtonTypeUrl("https://t.me/SƏNİN_KANAL_LİNKİN"),
-                )
-            ]
+            )]
+            for track in song_data.results
         ]
-    )
+
+        await response.edit_text(
+            f"🔎 ᴀxᴛᴀʀış ɴəᴛɪᴄəsɪ: <b>{query}</b>\n\nᴢəʜᴍəᴛ ᴏʟᴍᴀsᴀ, ʏüᴋʟəᴍəᴋ ɪsᴛəᴅɪʏɪɴɪᴢ ᴍᴀʜɴıɴıɴ üzəʀɪɴə ᴛᴏxᴜɴᴜɴ.",
+            parse_mode="html",
+            disable_web_page_preview=True,
+            reply_markup=types.ReplyMarkupInlineKeyboard(keyboard),
+        )
+
+    except Exception as e:
+        # Hər hansı xəta olarsa bot susmasın deyə
+        await response.edit_text("❌ ᴍᴇᴅɪᴀ ʏüᴋʟəɴə ʙɪʟᴍəᴅɪ. ʟɪɴᴋɪ ʏᴏxʟᴀʏıɴ.")
+
+@Client.on_message(filters=Filter.command(["spot", "spotify", "song"]))
+@fsub
+async def spotify_cmd(_: Client, message: types.Message):
+    parts = message.text.split(" ", 1)
+    if len(parts) < 2:
+        await message.reply_text("🔎 ᴢəʜᴍəᴛ ᴏʟᴍᴀsᴀ, ᴀxᴛᴀʀış sᴏʀğᴜsᴜ ɢöɴᴅəʀɪɴ.")
+        return
+    await process_spotify_query(message, parts[1])
+    raise StopHandlers
+
+@Client.on_message(filters=Filter.sp_tube())
+@fsub
+async def spotify_autodetect(_: Client, message: types.Message):
+    await process_spotify_query(message, message.text)
+    raise StopHandlers
