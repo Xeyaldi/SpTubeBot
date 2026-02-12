@@ -2,18 +2,19 @@ from pytdbot import Client, types
 from pytdbot.exception import StopHandlers
 
 from src.utils import ApiData, shortener, Filter
-from ._fsub import fsub
-
+# fsub-u hələlik bura əlavə etmirik ki, mane olmasın
 
 async def process_spotify_query(message: types.Message, query: str):
-    # "Searching for tracks..." -> "⏳ ᴍᴀʜɴıʟᴀʀ ᴀxᴛᴀʀıʟıʀ..."
-    response = await message.reply_text("⏳ ᴍᴀʜɴıʟᴀʀ ᴀxᴛᴀʀıʟıʀ...")
-    if isinstance(response, types.Error):
-        await message.reply_text(f"xəᴛᴀ: {response.message}")
+    # Botun cavab verib-vermədiyini yoxlamaq üçün ilk mesaj
+    try:
+        response = await message.reply_text("⏳ ᴍᴀʜɴıʟᴀʀ ᴀxᴛᴀʀıʟıʀ...")
+    except Exception as e:
+        print(f"Mesaj göndərmə xətası: {e}")
         return
 
     api = ApiData(query)
     song_data = await api.get_info() if api.is_valid() else await api.search(limit="5")
+    
     if isinstance(song_data, types.Error):
         await response.edit_text(f"❌ xəᴛᴀ: {song_data.message}")
         return
@@ -32,7 +33,6 @@ async def process_spotify_query(message: types.Message, query: str):
         for track in song_data.results
     ]
 
-    # Axtarış nəticəsi mətni
     await response.edit_text(
         f"🔎 ᴀxᴛᴀʀış ɴəᴛɪᴄəsɪ: <b>{query}</b>\n\nᴢəʜᴍəᴛ ᴏʟᴍᴀsᴀ, ʏüᴋʟəᴍəᴋ ɪsᴛəᴅɪʏɪɴɪᴢ ᴍᴀʜɴıɴıɴ üzəʀɪɴə ᴛᴏxᴜɴᴜɴ.",
         parse_mode="html",
@@ -40,22 +40,18 @@ async def process_spotify_query(message: types.Message, query: str):
         reply_markup=types.ReplyMarkupInlineKeyboard(keyboard),
     )
 
-
+# Komanda ilə yoxlama
 @Client.on_message(filters=Filter.command(["spot", "spotify", "song"]))
-@fsub
 async def spotify_cmd(_: Client, message: types.Message):
     parts = message.text.split(" ", 1)
     if len(parts) < 2:
         await message.reply_text("🔎 ᴢəʜᴍəᴛ ᴏʟᴍᴀsᴀ, ᴀxᴛᴀʀış sᴏʀğᴜsᴜ ɢöɴᴅəʀɪɴ.")
         return
-
-    query = parts[1]
-    await process_spotify_query(message, query)
+    await process_spotify_query(message, parts[1])
     raise StopHandlers
 
-
+# Link ilə avtomatik tanıma
 @Client.on_message(filters=Filter.sp_tube())
-@fsub
 async def spotify_autodetect(_: Client, message: types.Message):
     await process_spotify_query(message, message.text)
-    raise StopHandlers    
+    raise StopHandlers
