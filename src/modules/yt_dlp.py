@@ -14,15 +14,15 @@ from ._fsub import fsub
 async def youtube_cmd(c: Client, message: types.Message):
     parts = message.text.split(" ", 1)
     if len(parts) < 2:
-        await message.reply_text("🔎 ᴢəʜᴍəᴛ ᴏʟᴍᴀsᴀ, ᴀxᴛᴀʀış sᴏʀğᴜsᴜ ɢöɴᴅəʀɪɴ.")
+        await message.reply_text("Please provide a search query.")
         return
 
     query = parts[1]
     if not re.match(r"^https?://", query):
-        await message.reply_text("⚠️ ᴢəʜᴍəᴛ ᴏʟᴍᴀsᴀ, ᴠᴀʟɪᴅ ʙɪʀ ʟɪɴᴋ ɢöɴᴅəʀɪɴ.")
+        await message.reply_text("Please provide a valid URL.")
         return
 
-    reply = await message.reply_text("🔍 ʏüᴋʟəᴍə ʜᴀᴢıʀʟᴀɴıʀ...")
+    reply = await message.reply_text("🔍 Preparing download...")
     output_template = str(DOWNLOAD_PATH / "%(title).80s.%(ext)s")
 
     format_selector = "bestvideo[ext=mp4]+bestaudio[ext=m4a]/bestvideo+bestaudio/best"
@@ -61,34 +61,34 @@ async def youtube_cmd(c: Client, message: types.Message):
     try:
         stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=300)
     except asyncio.TimeoutError:
-        await reply.edit_text("⏳ ʏüᴋʟəᴍə ᴠᴀxᴛı ʙɪᴛᴅɪ (ᴛɪᴍᴇᴏᴜᴛ).")
+        await reply.edit_text("⏳ Download timed out.")
         return
 
     if proc.returncode != 0:
         error_msg = stderr.decode().strip()
         if "is not a valid URL" in error_msg:
-            await reply.edit_text("❌ sᴇʜᴠ ʟɪɴᴋ. ᴢəʜᴍəᴛ ᴏʟᴍᴀsᴀ, ᴅüzɢüɴ ᴠɪᴅᴇᴏ ʟɪɴᴋɪ ɢöɴᴅəʀɪɴ.")
+            await reply.edit_text("❌ Invalid URL provided. Please provide a valid video URL.")
         else:
-            await reply.edit_text(f"❌ ʏüᴋʟəᴍə xəᴛᴀsı:\n<code>{error_msg}</code>")
+            await reply.edit_text(f"❌ Error downloading:\n<code>{error_msg}</code>")
         return
 
     downloaded_path = stdout.decode().strip()
     if not downloaded_path:
-        await reply.edit_text("❌ ʏüᴋʟəɴɪʟᴍɪş ғᴀʏʟ ᴛᴀᴘıʟᴍᴀᴅı.")
+        await reply.edit_text("❌ Could not find downloaded file.")
         return
 
     try:
         if not os.path.exists(downloaded_path):
-            await reply.edit_text("❌ ғᴀʏʟ sɪsᴛᴇᴍdə ᴛᴀᴘıʟᴍᴀᴅı.")
+            await reply.edit_text("❌ Downloaded file not found.")
             return
 
         done = await message.reply_video(
             video=types.InputFileLocal(downloaded_path),
             supports_streaming=True,
-            caption="⚠️ ʙᴜ ᴠɪᴅᴇᴏ 2 ᴅəǫɪǫə sᴏɴʀᴀ ᴀᴠᴛᴏᴍᴀᴛɪᴋ sɪʟɪɴəᴄəᴋ. ᴏɴᴀ ɢöʀə də ɪɴᴅɪ ʏᴀᴅᴅᴀşᴀ ᴠᴇʀɪɴ ᴠə ʏᴀ ʙᴀşǫᴀsɪɴᴀ ɢöɴᴅəʀɪɴ.",
+            caption="This video automatically deletes in 2 minutes so save or forward it now.",
         )
         if isinstance(done, types.Error):
-            await reply.edit_text(f"❌ xəᴛᴀ: {done.message}")
+            await reply.edit_text(f"❌ Error: {done.message}")
         else:
             await reply.delete()
             async def delete_message():
